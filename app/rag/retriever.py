@@ -20,13 +20,17 @@ class RagRetriever:
             allow_dangerous_deserialization=True,
         )
 
-    def search(self, query: str, k: int = 3) -> list[str]:
+    def search(self, query: str, k: int = 3) -> list[dict]:
         documents = self.vectorstore.similarity_search(
             query,
             k=k,
         )
 
         return [
-            document.page_content
+            {
+                "content": document.page_content,
+                "source": document.metadata.get("source"),
+                "page": document.metadata.get("page"),
+            }
             for document in documents
         ]

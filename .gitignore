@@ -25,3 +25,5 @@ htmlcov/
 uploads/
 logs/
 data/private/
+.env
+data/vectorstore/

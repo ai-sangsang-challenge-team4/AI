@@ -13,8 +13,14 @@ class RagSearchRequest(BaseModel):
     query: str
 
 
+class RagSearchResult(BaseModel):
+    content: str
+    source: str | None = None
+    page: int | None = None
+
+
 class RagSearchResponse(BaseModel):
-    documents: list[str]
+    documents: list[RagSearchResult]
 
 
 @router.post("/search", response_model=RagSearchResponse)

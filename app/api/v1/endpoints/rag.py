@@ -6,8 +6,6 @@ from app.rag.retriever import RagRetriever
 
 router = APIRouter(prefix="/rag", tags=["RAG"])
 
-retriever = RagRetriever()
-
 
 class RagSearchRequest(BaseModel):
     query: str
@@ -25,6 +23,8 @@ class RagSearchResponse(BaseModel):
 
 @router.post("/search", response_model=RagSearchResponse)
 def search(request: RagSearchRequest):
+    retriever = RagRetriever()
+
     documents = retriever.search(request.query)
 
     return RagSearchResponse(

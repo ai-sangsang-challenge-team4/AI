@@ -1,6 +1,9 @@
+import json
+
 from app.llm.mock_client import MockLlmClient
 from app.rag.mock_retriever import MockRagRetriever
 from app.rag.prompt import build_prompt
+from app.schemas.ai import AiAnalysisResult
 
 
 class AiService:
@@ -9,7 +12,7 @@ class AiService:
         self.retriever = MockRagRetriever()
         self.llm_client = MockLlmClient()
 
-    def analyze(self, complaint: str) -> str:
+    def analyze(self, complaint: str) -> AiAnalysisResult:
         documents = self.retriever.search(
             complaint,
             k=3,
@@ -20,4 +23,8 @@ class AiService:
             documents=documents,
         )
 
-        return self.llm_client.generate(prompt)
+        response = self.llm_client.generate(prompt)
+
+        data = json.loads(response)
+
+        return AiAnalysisResult.model_validate(data)

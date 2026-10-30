@@ -1,15 +1,18 @@
 from pathlib import Path
 
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import FAISS
 from dotenv import load_dotenv
+from langchain_chroma import Chroma
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 
 load_dotenv()
 
 DOCUMENT_DIR = Path("data/documents")
 VECTORSTORE_DIR = Path("data/vectorstore")
+
+EMBEDDING_MODEL = "BAAI/bge-m3"
 
 
 def load_documents():
@@ -38,35 +41,54 @@ def split_documents(documents):
     return splitter.split_documents(documents)
 
 
+def create_embeddings():
+    print(f"Loading embedding model: {EMBEDDING_MODEL}")
+
+    return HuggingFaceEmbeddings(
+        model_name=EMBEDDING_MODEL,
+        model_kwargs={
+            "device": "cpu",
+        },
+        encode_kwargs={
+            "normalize_embeddings": True,
+        },
+    )
+
+
 def create_vectorstore(chunks):
-    embeddings = OpenAIEmbeddings(
-        model="text-embedding-3-small"
+    embeddings = create_embeddings()
+
+    VECTORSTORE_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
     )
 
-    vectorstore = FAISS.from_documents(
-        chunks,
-        embeddings,
+    print("Creating Chroma vector store...")
+
+    vectorstore = Chroma.from_documents(
+        documents=chunks,
+        embedding=embeddings,
+        persist_directory=str(VECTORSTORE_DIR),
+        collection_name="teacherhub_rag",
     )
-
-    VECTORSTORE_DIR.mkdir(parents=True, exist_ok=True)
-
-    vectorstore.save_local(str(VECTORSTORE_DIR))
 
     return vectorstore
 
 
 def main():
-    print("=== RAG Ingestion Start ===")
+    print("=== Chroma RAG Ingestion Start ===")
 
     documents = load_documents()
+
     print(f"Loaded documents: {len(documents)}")
 
     chunks = split_documents(documents)
+
     print(f"Created chunks: {len(chunks)}")
 
     create_vectorstore(chunks)
 
-    print("=== FAISS Vector Store Created ===")
+    print("=== Chroma Vector Store Created ===")
 
 
 if __name__ == "__main__":

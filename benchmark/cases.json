@@ -1,0 +1,52 @@
+[
+  {
+    "id": "case_001",
+    "category": "NORMAL",
+    "complaint": "다음 상담 일정과 상담 방법을 안내받고 싶습니다."
+  },
+  {
+    "id": "case_002",
+    "category": "THREAT",
+    "complaint": "요구사항을 들어주지 않으면 교육청에 신고하고 학교에 불이익을 주겠습니다."
+  },
+  {
+    "id": "case_003",
+    "category": "UNFAIR_REQUEST",
+    "complaint": "이번에는 규정을 적용하지 말고 우리 아이만 예외로 처리해 주세요."
+  },
+  {
+    "id": "case_004",
+    "category": "NORMAL",
+    "complaint": "아이의 학교생활에 대해 상담하고 싶습니다."
+  },
+  {
+    "id": "case_005",
+    "category": "THREAT",
+    "complaint": "이 문제를 해결하지 않으면 가만두지 않겠습니다."
+  },
+  {
+    "id": "case_006",
+    "category": "UNFAIR_REQUEST",
+    "complaint": "다른 학생들에게는 적용하지 않아도 되니 우리 아이에게만 특별히 처리해 주세요."
+  },
+  {
+    "id": "case_007",
+    "category": "NORMAL",
+    "complaint": "결석 처리 기준과 필요한 서류를 알려주세요."
+  },
+  {
+    "id": "case_008",
+    "category": "THREAT",
+    "complaint": "학교에서 제대로 처리하지 않으면 직접 찾아가서 따지겠습니다."
+  },
+  {
+    "id": "case_009",
+    "category": "UNFAIR_REQUEST",
+    "complaint": "규정과 관계없이 제가 원하는 방식으로 처리해 주셨으면 합니다."
+  },
+  {
+    "id": "case_010",
+    "category": "NORMAL",
+    "complaint": "담임 선생님과 면담할 수 있는 시간을 알려주세요."
+  }
+]

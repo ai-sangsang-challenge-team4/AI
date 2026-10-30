@@ -1,18 +1,42 @@
+import json
+
 from app.llm.client import LlmClient
 
 
 class MockLlmClient(LlmClient):
 
     def generate(self, prompt: str) -> str:
-        return """
-{
-  "risk_tags": [
-    {
-      "code": "THREAT",
-      "evidence": "위협성 표현이 포함된 것으로 판단되는 내용"
-    }
-  ],
-  "summary": "학부모 민원 내용에 대한 Mock 요약입니다.",
-  "draft": "관련 절차에 따라 민원을 확인하고 필요한 조치를 안내드리겠습니다."
-}
-""".strip()
+        return json.dumps({
+            "tags": [
+                {
+                    "code": "THREAT",
+                    "state": "PRESENT",
+                    "confidence": 0.9,
+                    "evidenceSpans": [
+                        {
+                            "text": "불이익을 주겠습니다.",
+                            "start": None,
+                            "end": None
+                        }
+                    ],
+                    "reason": "불이익을 암시하는 위협성 문맥"
+                },
+                {
+                    "code": "UNFAIR_REQUEST",
+                    "state": "PRESENT",
+                    "confidence": 0.8,
+                    "evidenceSpans": [
+                        {
+                            "text": "일방적인 조치를 요구합니다.",
+                            "start": None,
+                            "end": None
+                        }
+                    ],
+                    "reason": "일방적인 조치를 요구하는 문맥"
+                }
+            ],
+            "metadata": {
+                "modelName": "mock-python-llm",
+                "temperature": 0.0
+            }
+        }, ensure_ascii=False)

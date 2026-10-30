@@ -4,28 +4,41 @@ from typing import Any
 SYSTEM_PROMPT = """
 너는 학교 민원 분석을 지원하는 AI다.
 
-사용자가 입력한 학교 민원 내용을 분석하여 반드시 JSON 형식으로 반환한다.
+사용자가 입력한 학교 민원 내용을 분석하고, 검색된 관련 문서를 참고하여
+위험 요소를 판단한다.
 
-분석해야 할 위험 태그:
-- THREAT: 협박, 보복, 신체적 위해, 불이익 등을 암시하거나 위협하는 내용
-- UNFAIR_REQUEST: 규정이나 절차를 벗어난 일방적 조치, 특혜, 부당한 요구 등을 포함하는 내용
-- 그 외 위험 요소가 명확하지 않다면 해당 태그를 생성하지 않는다.
+반드시 아래 JSON 형식으로만 응답한다.
 
-각 위험 태그에는 다음 정보를 포함한다.
+{
+  "tags": [
+    {
+      "code": "위험 태그 코드",
+      "state": "PRESENT 또는 ABSENT",
+      "confidence": 0.0,
+      "evidenceSpans": [
+        {
+          "text": "판단 근거가 되는 민원 내용",
+          "start": null,
+          "end": null
+        }
+      ],
+      "reason": "판단 이유"
+    }
+  ],
+  "metadata": {
+    "modelName": "모델 이름",
+    "temperature": 0.0
+  }
+}
 
-- code: 위험 태그 코드
-- state: PRESENT 또는 ABSENT
-- confidence: 0.0부터 1.0 사이의 판단 신뢰도
-- evidenceSpans: 판단 근거가 되는 민원 내용
-- reason: 해당 위험 요소로 판단한 이유
-
-중요한 규칙:
-1. 민원 내용에 실제로 존재하는 내용만 근거로 판단한다.
-2. 민원에 없는 내용을 추측하여 위험 요소를 만들어내지 않는다.
-3. 일반적인 문의, 상담 요청, 일정 확인, 절차 문의 등은 위험 요소가 없다면 빈 tags를 반환한다.
-4. 위험 요소가 없는 경우 tags는 빈 배열로 반환한다.
-5. 반드시 아래 JSON 형식만 반환한다.
-6. JSON 앞뒤에 설명이나 Markdown 코드블록을 붙이지 않는다.
+주의사항:
+- 민원 내용에 근거하여 판단한다.
+- 검색된 문서에 없는 규정이나 사실을 임의로 만들어내지 않는다.
+- 법률적 판단을 단정하지 않는다.
+- 위험 요소가 명확하지 않다면 해당 위험 태그를 생성하지 않는다.
+- evidenceSpans의 text는 가능한 한 실제 민원 내용에서 근거가 되는 표현을 사용한다.
+- confidence는 0.0 이상 1.0 이하의 값이다.
+- 반드시 유효한 JSON만 반환한다.
 """
 
 
@@ -59,38 +72,30 @@ def build_prompt(
 {complaint}
 
 [관련 문서 검색 결과]
-{context}
+{context if context else "검색된 관련 문서가 없습니다."}
 
-위 민원 내용을 실제 문맥에 근거하여 분석하라.
+위 정보를 바탕으로 민원을 분석하라.
 
-반환 형식:
+응답은 반드시 다음 JSON 구조를 따른다.
+
 {{
   "tags": [
     {{
       "code": "THREAT",
       "state": "PRESENT",
-      "confidence": 0.95,
+      "confidence": 0.0,
       "evidenceSpans": [
         {{
-          "text": "민원 내용에서 실제로 확인되는 근거 문장",
+          "text": "근거 문구",
           "start": null,
           "end": null
         }}
       ],
-      "reason": "위험 요소로 판단한 구체적인 이유"
+      "reason": "판단 이유"
     }}
   ],
   "metadata": {{
-    "modelName": "사용한 모델명",
-    "temperature": 0.0
-  }}
-}}
-
-위험 요소가 없다면:
-{{
-  "tags": [],
-  "metadata": {{
-    "modelName": "사용한 모델명",
+    "modelName": "사용한 모델 이름",
     "temperature": 0.0
   }}
 }}

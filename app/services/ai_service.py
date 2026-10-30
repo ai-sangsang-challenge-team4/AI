@@ -1,17 +1,19 @@
 import json
 
 from app.llm.mock_client import MockLlmClient
-from app.rag.mock_retriever import MockRagRetriever
+from app.rag.retriever import RagRetriever
 from app.rag.prompt import build_prompt
 from app.schemas.ai import AiAnalysisResult
 
+
 class AiService:
-    
+
     def __init__(self):
-        self.retriever = MockRagRetriever()
+        self.retriever = RagRetriever()
         self.llm_client = MockLlmClient()
 
     def analyze(self, complaint: str) -> AiAnalysisResult:
+
         documents = self.retriever.search(
             complaint,
             k=3,

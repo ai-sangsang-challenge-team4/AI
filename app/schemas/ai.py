@@ -22,4 +22,5 @@ class LlmAnalysisMetadata(BaseModel):
 
 class AiAnalysisResult(BaseModel):
     tags: list[RiskTagResult]
+    softenedSummary: str
     metadata: LlmAnalysisMetadata

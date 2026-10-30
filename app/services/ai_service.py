@@ -1,13 +1,5 @@
-import json
-
-from app.llm.mock_client import MockLlmClient
-from app.rag.mock_retriever import MockRagRetriever
-from app.rag.prompt import build_prompt
-from app.schemas.ai import AiAnalysisResult
-
-
 class AiService:
-
+    
     def __init__(self):
         self.retriever = MockRagRetriever()
         self.llm_client = MockLlmClient()

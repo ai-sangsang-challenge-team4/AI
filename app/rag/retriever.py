@@ -1,31 +1,30 @@
 from pathlib import Path
 
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
 
 
 VECTORSTORE_DIR = Path("data/vectorstore")
-
-COLLECTION_NAME = "school_complaint_rag"
+EMBEDDING_MODEL = "BAAI/bge-m3"
 
 
 class RagRetriever:
 
     def __init__(self):
-        if not VECTORSTORE_DIR.exists():
-            raise FileNotFoundError(
-                f"Chroma vectorstore가 없습니다: {VECTORSTORE_DIR}\n"
-                "먼저 python3 -m app.rag.ingest 를 실행하세요."
-            )
-
-        embeddings = GoogleGenerativeAIEmbeddings(
-            model="gemini-embedding-001",
+        embeddings = HuggingFaceEmbeddings(
+            model_name=EMBEDDING_MODEL,
+            model_kwargs={
+                "device": "cpu",
+            },
+            encode_kwargs={
+                "normalize_embeddings": True,
+            },
         )
 
         self.vectorstore = Chroma(
-            collection_name=COLLECTION_NAME,
-            embedding_function=embeddings,
+            collection_name="teacherhub_rag",
             persist_directory=str(VECTORSTORE_DIR),
+            embedding_function=embeddings,
         )
 
     def search(

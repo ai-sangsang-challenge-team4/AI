@@ -13,7 +13,6 @@ class AiService:
         self.llm_client = MockLlmClient()
 
     def analyze(self, complaint: str) -> AiAnalysisResult:
-
         documents = self.retriever.search(
             complaint,
             k=3,

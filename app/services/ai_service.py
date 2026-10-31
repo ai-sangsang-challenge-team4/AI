@@ -97,7 +97,42 @@ class AiService:
             prompt
         )
 
-        return json.loads(response)
+        response = (response or "").strip()
+
+        # Gemini가 Markdown 코드블록으로
+        # JSON을 반환하는 경우 처리
+        if response.startswith("```"):
+            response = response.replace(
+                "```json",
+                "",
+                1,
+            )
+
+            response = response.replace(
+                "```",
+                "",
+            )
+
+            response = response.strip()
+
+        # 5. JSON 응답 검증
+        try:
+            return json.loads(response)
+
+        except json.JSONDecodeError as exc:
+            print(
+                "===== CONTEXT ANALYSIS INVALID JSON ====="
+            )
+            print(
+                f"RAW RESPONSE: {response!r}"
+            )
+            print(
+                "=========================================="
+            )
+
+            raise ValueError(
+                "문맥 분석 LLM이 유효한 JSON을 반환하지 않았습니다."
+            ) from exc
 
     def _append_context_examples(
         self,

@@ -148,3 +148,122 @@ def build_softened_summary_prompt(complaint: str) -> str:
 
 위 민원을 중립적이고 차분한 표현으로 요약하라.
 """.strip()
+
+def build_context_analysis_prompt(
+    complaint: str,
+    history_context: str | None = None,
+    history_available: bool = False,
+    same_topic_count_7d: int = 0,
+    prior_teacher_responses: int = 0,
+    prior_resolution_status: str | None = None,
+    days_since_first_contact: int = 0,
+    regulation_context: str | None = None,
+) -> str:
+    return f"""
+당신은 학교 민원 분석을 지원하는 AI입니다.
+
+사용자의 민원 내용을 단순한 키워드가 아니라
+문맥과 의도를 바탕으로 분석하여 민원 유형과 주제를 분류합니다.
+
+반드시 아래 코드북에 정의된 값만 사용하세요.
+
+[communicationIntent 코드북]
+
+INFORMATION_INQUIRY
+- 규정, 기준, 일정, 처리 방법 등 사실 정보를 묻는 목적
+
+COUNSELING_REQUEST
+- 학생 상황이나 문제에 대해 함께 논의하거나 상담을 요청하는 목적
+
+ACTION_REQUEST
+- 교사나 학교가 특정 조치 또는 변경을 하도록 요청하는 목적
+
+OBJECTION_COMPLAINT
+- 결정, 평가, 대응 등에 문제를 제기하거나 불만을 공식적으로 나타내는 목적
+
+STATUS_FOLLOWUP
+- 이전 문의나 처리의 진행 상황, 답변 여부를 확인하는 목적
+
+FACT_REPORT
+- 발생한 사실이나 관찰 내용을 전달하거나 보고하는 목적
+
+
+[primaryTopic 코드북]
+
+ATTENDANCE_SCHEDULE
+- 결석, 지각, 조퇴, 체험학습, 행사 일정 등
+
+LEARNING_ASSIGNMENT
+- 수업, 숙제, 준비물, 보충학습 등
+
+ASSESSMENT_GRADE
+- 시험, 수행평가, 채점, 성적, 재검토 등
+
+STUDENT_GUIDANCE
+- 생활규칙, 휴대전화, 안전, 시설·급식 등 학생 생활지도
+
+PEER_RELATIONSHIP
+- 친구 갈등, 다툼, 따돌림, 괴롭힘, 온라인 관계 등
+
+TEACHER_INTERACTION
+- 교사의 지도 방식, 태도, 소통 및 응대 등
+
+SCHOOL_POLICY_PROCEDURE
+- 학교 규정, 개인정보, 민원·상담 절차, 권한 범위 등
+
+
+[분석 원칙]
+
+1. 민원에 실제로 나타난 의도와 주제를 분석한다.
+2. 단순한 단어가 아니라 문맥과 요청의 목적을 기준으로 판단한다.
+3. 감정적인 표현이 있다고 해서 자동으로 OBJECTION_COMPLAINT로 분류하지 않는다.
+4. 질문 형태라고 해서 자동으로 INFORMATION_INQUIRY로 분류하지 않는다.
+5. 실제로 무엇을 요구하는지를 우선적으로 판단한다.
+6. 여러 주제가 있으면 가장 핵심적인 것을 primaryTopic으로 선택한다.
+7. secondaryTopics에는 부수적으로 관련된 주제만 넣는다.
+8. 원문에 없는 사실을 추측하지 않는다.
+9. 과거 민원 이력이 제공된 경우에만 반복성이나 처리 경과를 판단한다.
+10. 과거 이력이 없으면 historyRequired를 true로 표시할 수 있지만,
+    이력 자체를 임의로 만들어서는 안 된다.
+11. 애매한 경우 boundaryCase를 true로 표시한다.
+12. obfuscationType은 다음 중 하나로 판단한다.
+    NONE, MASKING, CHOSUNG, NUMBER_SUBSTITUTION, SPACING, OTHER
+13. confidence는 0.0 이상 1.0 이하로 작성한다.
+14. evidenceSpans에는 실제 민원 원문에서 판단 근거가 되는 문구를 넣는다.
+
+
+[민원 내용]
+{complaint}
+
+[이전 민원 및 처리 이력]
+history_available: {history_available}
+history_context: {history_context or "제공되지 않음"}
+same_topic_count_7d: {same_topic_count_7d}
+prior_teacher_responses: {prior_teacher_responses}
+prior_resolution_status: {prior_resolution_status or "제공되지 않음"}
+days_since_first_contact: {days_since_first_contact}
+
+[관련 규정 및 업무 맥락]
+{regulation_context or "제공되지 않음"}
+
+
+반드시 아래 JSON 구조로만 응답하세요.
+
+{{
+  "communicationIntent": "INFORMATION_INQUIRY",
+  "primaryTopic": "ATTENDANCE_SCHEDULE",
+  "secondaryTopics": [],
+  "confidence": 0.0,
+  "evidenceSpans": [
+    {{
+      "text": "실제 민원 원문의 근거 문구",
+      "start": null,
+      "end": null
+    }}
+  ],
+  "reason": "판단 이유",
+  "historyRequired": false,
+  "boundaryCase": false,
+  "obfuscationType": "NONE"
+}}
+""".strip()

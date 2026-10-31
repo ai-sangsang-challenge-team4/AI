@@ -49,7 +49,7 @@
     },
     "tags": [
       {
-        "code": "GENERAL_PROFANITY_EMOTION",
+        "code": "PROFANITY",
         "state": "PRESENT",
         "evidenceSpans": []
       }
@@ -65,7 +65,7 @@
     },
     "tags": [
       {
-        "code": "GENERAL_PROFANITY_EMOTION",
+        "code": "PROFANITY",
         "state": "PRESENT",
         "evidenceSpans": [
           {
@@ -75,7 +75,7 @@
         "reason": "특정 개인의 인격·능력을 직접 공격함"
       },
       {
-        "code": "DIRECT_INSULT_PERSONAL_ATTACK",
+        "code": "INSULT",
         "state": "PRESENT",
         "evidenceSpans": []
       }
@@ -91,7 +91,7 @@
     },
     "tags": [
       {
-        "code": "THREAT_INTIMIDATION",
+        "code": "THREAT",
         "state": "PRESENT",
         "evidenceSpans": [
           {
@@ -149,7 +149,7 @@
     },
     "tags": [
       {
-        "code": "THREAT_INTIMIDATION",
+        "code": "THREAT",
         "state": "PRESENT",
         "evidenceSpans": [],
         "reason": "보복을 암시하는 협박성 민원."
@@ -160,7 +160,7 @@
         "evidenceSpans": []
       },
       {
-        "code": "REPETITION",
+        "code": "REPEAT",
         "state": "PRESENT",
         "evidenceSpans": [],
         "reason": "동일 사안 반복 민원. 하지만 이 민원 하나로는 반복성 파악 못함."
@@ -198,17 +198,17 @@
     },
     "tags": [
       {
-        "code": "THREAT_INTIMIDATION",
+        "code": "THREAT",
         "state": "PRESENT",
         "evidenceSpans": []
       },
       {
-        "code": "PUBLIC_DISCLOSURE_THREAT",
+        "code": "EXPOSURE",
         "state": "PRESENT",
         "evidenceSpans": []
       },
       {
-        "code": "REPETITION",
+        "code": "REPEAT",
         "state": "PRESENT",
         "evidenceSpans": [],
         "reason": "동일 사안 반복 민원. 하지만 이 민원 하나로는 반복성 파악 못함."
@@ -236,7 +236,7 @@
     },
     "tags": [
       {
-        "code": "REPETITION",
+        "code": "REPEAT",
         "state": "PRESENT",
         "evidenceSpans": []
       },
@@ -347,7 +347,7 @@
     },
     "tags": [
       {
-        "code": "GENERAL_PROFANITY_EMOTION",
+        "code": "PROFANITY",
         "state": "PRESENT",
         "evidenceSpans": [
           {
@@ -357,7 +357,7 @@
         "reason": "비속어가 있음."
       },
       {
-        "code": "DIRECT_INSULT_PERSONAL_ATTACK",
+        "code": "INSULT",
         "state": "PRESENT",
         "evidenceSpans": [
           {
@@ -378,7 +378,7 @@
     },
     "tags": [
       {
-        "code": "THREAT_INTIMIDATION",
+        "code": "THREAT",
         "state": "PRESENT",
         "evidenceSpans": []
       },
@@ -388,12 +388,12 @@
         "evidenceSpans": []
       },
       {
-        "code": "PUBLIC_DISCLOSURE_THREAT",
+        "code": "EXPOSURE",
         "state": "PRESENT",
         "evidenceSpans": []
       },
       {
-        "code": "REPETITION",
+        "code": "REPEAT",
         "state": "PRESENT",
         "evidenceSpans": []
       },

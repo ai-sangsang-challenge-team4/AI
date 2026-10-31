@@ -4,6 +4,7 @@ from app.llm.gemini_client import GeminiLlmClient
 from app.rag.mock_retriever import MockRagRetriever
 from app.rag.context_example_retriever import ContextExampleRetriever
 from app.rag.prompt import (
+    RISK_TAG_CODES,
     build_context_analysis_prompt,
     build_prompt,
     build_softened_summary_prompt,
@@ -14,16 +15,16 @@ from app.schemas.ai import AiAnalysisResult
 class AiService:
 
     def __init__(self):
-        # 위험 요소 태깅용 RAG
+        # 위험 요소 분석용 RAG
         self.retriever = MockRagRetriever()
-
-        # 위험 요소 태깅 LLM
-        self.llm_client = GeminiLlmClient(
-            model="gemini-3.5-flash-lite"
-        )
 
         # 교사 검토 사례 검색
         self.example_retriever = ContextExampleRetriever()
+
+        # 위험 요소 태깅
+        self.risk_llm_client = GeminiLlmClient(
+            model="gemini-3.5-flash-lite"
+        )
 
         # 완충 요약
         self.summary_llm_client = GeminiLlmClient(
@@ -40,7 +41,7 @@ class AiService:
         complaint: str,
     ) -> AiAnalysisResult:
 
-        # 1. 위험 요소 태깅을 위한 관련 문서 검색
+        # 1. 관련 자료 검색
         documents = self.retriever.search(
             complaint,
             k=3,
@@ -52,32 +53,44 @@ class AiService:
             documents=documents,
         )
 
-        # 3. LLM에게 위험 요소 태깅 요청
-        response = self.llm_client.generate(
+        # 3. Gemini 위험 요소 분석
+        response = self.risk_llm_client.generate(
             prompt
         )
 
-        # 4. LLM JSON 응답 파싱
-        data = self._parse_json_response(
+        # 4. Gemini JSON 파싱
+        risk_data = self._parse_json_response(
             response,
-            error_message="위험 요소 태깅 LLM이 유효한 JSON을 반환하지 않았습니다.",
+            error_message=(
+                "위험 요소 분석 LLM이 "
+                "유효한 JSON을 반환하지 않았습니다."
+            ),
         )
 
-        # 5. 문맥 분석
+        # 5. RiskTagCode 검증
+        self._validate_risk_tags(
+            risk_data
+        )
+
+        # 6. 문맥 분석
         context = self.analyze_context(
             complaint
         )
 
-        data["context"] = context
+        # 7. 최종 데이터 구성
+        data = {
+            **risk_data,
+            "context": context,
+        }
 
-        # 6. 완충 요약
+        # 8. 완충 요약
         softened_summary = self.soften_summary(
             complaint
         )
 
         data["softenedSummary"] = softened_summary
 
-        # 7. 최종 스키마 검증
+        # 9. 최종 결과 검증
         return AiAnalysisResult.model_validate(
             data
         )
@@ -97,7 +110,7 @@ class AiService:
             complaint=complaint,
         )
 
-        # 3. 과거 검토 사례를 참고자료로 추가
+        # 3. 과거 검토 사례를 few-shot 참고자료로 추가
         prompt = self._append_context_examples(
             prompt=prompt,
             examples=examples,
@@ -111,8 +124,92 @@ class AiService:
         # 5. JSON 파싱
         return self._parse_json_response(
             response,
-            error_message="문맥 분석 LLM이 유효한 JSON을 반환하지 않았습니다.",
+            error_message=(
+                "문맥 분석 LLM이 "
+                "유효한 JSON을 반환하지 않았습니다."
+            ),
         )
+
+    def soften_summary(
+        self,
+        complaint: str,
+    ) -> str:
+
+        prompt = build_softened_summary_prompt(
+            complaint
+        )
+
+        response = self.summary_llm_client.generate(
+            prompt
+        )
+
+        return response.strip()
+
+    def _validate_risk_tags(
+        self,
+        data: dict,
+    ) -> None:
+
+        tags = data.get(
+            "tags",
+            [],
+        )
+
+        if not isinstance(tags, list):
+            raise ValueError(
+                "위험 요소 분석 결과의 tags는 리스트여야 합니다."
+            )
+
+        for tag in tags:
+            code = tag.get("code")
+
+            if code not in RISK_TAG_CODES:
+                raise ValueError(
+                    f"허용되지 않은 RiskTagCode입니다: {code}"
+                )
+
+    def _parse_json_response(
+        self,
+        response: str,
+        error_message: str,
+    ) -> dict:
+
+        response = response.strip()
+
+        # Gemini가 Markdown 코드블록으로 JSON을 반환하는 경우 처리
+        if response.startswith("```"):
+            if response.startswith("```json"):
+                response = response[
+                    len("```json"):
+                ]
+
+            elif response.startswith("```"):
+                response = response[
+                    len("```"):
+                ]
+
+            if response.endswith("```"):
+                response = response[
+                    :-len("```")
+                ]
+
+            response = response.strip()
+
+        try:
+            return json.loads(response)
+
+        except json.JSONDecodeError as exc:
+            print(
+                "===== LLM INVALID JSON ====="
+            )
+            print(response)
+            print(
+                "============================"
+            )
+
+            raise ValueError(
+                error_message
+            ) from exc
 
     def _append_context_examples(
         self,
@@ -224,60 +321,3 @@ class AiService:
 
 반드시 위에서 제공된 현재 민원을 기준으로 판단하라.
 """.strip()
-
-    def soften_summary(
-        self,
-        complaint: str,
-    ) -> str:
-
-        prompt = build_softened_summary_prompt(
-            complaint
-        )
-
-        response = self.summary_llm_client.generate(
-            prompt
-        )
-
-        return response.strip()
-
-    def _parse_json_response(
-        self,
-        response: str,
-        error_message: str,
-    ) -> dict:
-
-        response = response.strip()
-
-        # Gemini가 Markdown 코드블록으로 JSON을 반환하는 경우 처리
-        if response.startswith("```"):
-            if response.startswith("```json"):
-                response = response[
-                    len("```json"):
-                ]
-            else:
-                response = response[
-                    len("```"):
-                ]
-
-            if response.endswith("```"):
-                response = response[
-                    :-len("```")
-                ]
-
-            response = response.strip()
-
-        try:
-            return json.loads(response)
-
-        except json.JSONDecodeError as exc:
-            print(
-                "===== INVALID JSON RESPONSE ====="
-            )
-            print(response)
-            print(
-                "=================================="
-            )
-
-            raise ValueError(
-                error_message
-            ) from exc

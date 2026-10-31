@@ -1,0 +1,417 @@
+[
+  {
+    "caseId": "C001",
+    "message": "선생님, 아이가 오늘 열이 나서 결석했습니다. 진료확인서를 제출하면 출결 처리가 어떻게 되는지 알려주실 수 있을까요?",
+    "context": {
+      "communicationIntent": "INFORMATION_INQUIRY",
+      "primaryTopic": "ATTENDANCE_SCHEDULE",
+      "secondaryTopics": []
+    },
+    "tags": []
+  },
+  {
+    "caseId": "C002",
+    "message": "요즘 아이가 쉬는 시간에 혼자 있는 날이 많다고 합니다. 학교에서 보신 모습이 어떤지 듣고 함께 도울 방법을 상담하고 싶습니다.",
+    "context": {
+      "communicationIntent": "COUNSELING_REQUEST",
+      "primaryTopic": "PEER_RELATIONSHIP",
+      "secondaryTopics": []
+    },
+    "tags": []
+  },
+  {
+    "caseId": "C003",
+    "message": "이번 수행평가에서 어떤 기준으로 점수가 정해졌는지 궁금합니다. 감점된 항목과 재검토 절차가 있다면 안내 부탁드립니다.",
+    "context": {
+      "communicationIntent": "INFORMATION_INQUIRY",
+      "primaryTopic": "ASSESSMENT_GRADE",
+      "secondaryTopics": []
+    },
+    "tags": []
+  },
+  {
+    "caseId": "C004",
+    "message": "아이가 과학실에서 보안경 한 개가 깨져 있는 것을 봤다고 합니다. 다칠 수 있을 것 같아 확인 부탁드립니다.",
+    "context": {
+      "communicationIntent": "ACTION_REQUEST",
+      "primaryTopic": "STUDENT_GUIDANCE",
+      "secondaryTopics": []
+    },
+    "tags": []
+  },
+  {
+    "caseId": "C005",
+    "message": "정말 답답하고 화가 납니다. 며칠째 안내가 달라서 도대체 어느 말을 믿어야 하나요?",
+    "context": {
+      "communicationIntent": "OBJECTION_COMPLAINT",
+      "primaryTopic": "ATTENDANCE_SCHEDULE",
+      "secondaryTopics": []
+    },
+    "tags": [
+      {
+        "code": "GENERAL_PROFANITY_EMOTION",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      }
+    ]
+  },
+  {
+    "caseId": "C006",
+    "message": "선생님은 아이들 상황을 파악할 능력이 없는 것 같습니다. 이런 무책임한 분이 담임이라는 게 걱정됩니다.",
+    "context": {
+      "communicationIntent": "OBJECTION_COMPLAINT",
+      "primaryTopic": "TEACHER_INTERACTION",
+      "secondaryTopics": []
+    },
+    "tags": [
+      {
+        "code": "GENERAL_PROFANITY_EMOTION",
+        "state": "PRESENT",
+        "evidenceSpans": [
+          {
+            "text": "능력이 없는 것 같습니다. 무책임한 분"
+          }
+        ],
+        "reason": "특정 개인의 인격·능력을 직접 공격함"
+      },
+      {
+        "code": "DIRECT_INSULT_PERSONAL_ATTACK",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      }
+    ]
+  },
+  {
+    "caseId": "C007",
+    "message": "계속 이런 식으로 우리 아이를 대하시면 저도 더는 가만히 있지 않겠습니다. 무슨 뜻인지 아시겠죠.",
+    "context": {
+      "communicationIntent": "OBJECTION_COMPLAINT",
+      "primaryTopic": "TEACHER_INTERACTION",
+      "secondaryTopics": []
+    },
+    "tags": [
+      {
+        "code": "THREAT_INTIMIDATION",
+        "state": "PRESENT",
+        "evidenceSpans": [
+          {
+            "text": "가만히 있지 않겠습니다. 무슨 뜻인지 아시겠죠."
+          }
+        ],
+        "reason": "보복을 가하겠다는 의사를 암시함"
+      }
+    ]
+  },
+  {
+    "caseId": "C008",
+    "message": "내일까지 사과하지 않으면 학교 앞에서 책임을 분명히 묻겠습니다. 그때는 일이 커져도 제 탓 하지 마세요.",
+    "context": {
+      "communicationIntent": "ACTION_REQUEST",
+      "primaryTopic": "TEACHER_INTERACTION",
+      "secondaryTopics": []
+    },
+    "tags": [
+      {
+        "code": "UNREASONABLE_DEMAND",
+        "state": "PRESENT",
+        "evidenceSpans": [
+          {
+            "text": "내일까지 사과하지 않으면 학교 앞에서 책임을 분명히 묻겠습니다. 일이 커져도 제 탓 하지 마세요."
+          }
+        ],
+        "reason": "적법한 절차를 벗어난 조치를 요구. 협박성 우리한 요구."
+      }
+    ]
+  },
+  {
+    "caseId": "C009",
+    "message": "학교 답변에 이의가 있을 때 교육청에 문의하려면 어떤 절차와 서류가 필요한가요? 먼저 학교 상담 절차를 거쳐야 하는지도 궁금합니다.",
+    "context": {
+      "communicationIntent": "INFORMATION_INQUIRY",
+      "primaryTopic": "SCHOOL_POLICY_PROCEDURE",
+      "secondaryTopics": []
+    },
+    "tags": [
+      {
+        "code": "LEGAL_ADMIN_ACTION_MENTION",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      }
+    ]
+  },
+  {
+    "caseId": "C010",
+    "message": "오늘 안에 원하는 답을 주지 않으면 교육청에 계속 민원을 넣겠습니다. 처리될 때까지 매일 접수할 생각입니다.",
+    "context": {
+      "communicationIntent": "OBJECTION_COMPLAINT",
+      "primaryTopic": "SCHOOL_POLICY_PROCEDURE",
+      "secondaryTopics": []
+    },
+    "tags": [
+      {
+        "code": "THREAT_INTIMIDATION",
+        "state": "PRESENT",
+        "evidenceSpans": [],
+        "reason": "보복을 암시하는 협박성 민원."
+      },
+      {
+        "code": "LEGAL_ADMIN_ACTION_MENTION",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      },
+      {
+        "code": "REPETITION",
+        "state": "PRESENT",
+        "evidenceSpans": [],
+        "reason": "동일 사안 반복 민원. 하지만 이 민원 하나로는 반복성 파악 못함."
+      },
+      {
+        "code": "UNREASONABLE_DEMAND",
+        "state": "PRESENT",
+        "evidenceSpans": [
+          {
+            "text": "원하는 답. 계속 민원을 넣겠습니다."
+          }
+        ],
+        "reason": "협박성 무리한 요구"
+      }
+    ]
+  },
+  {
+    "caseId": "C011",
+    "message": "이 일을 학부모 단체방에 공유하면 다른 분들도 상황을 이해할까요? 사실관계가 확인된 뒤 알리는 편이 나을지 문의드립니다.",
+    "context": {
+      "communicationIntent": "INFORMATION_INQUIRY",
+      "primaryTopic": "SCHOOL_POLICY_PROCEDURE",
+      "secondaryTopics": []
+    },
+    "tags": []
+  },
+  {
+    "caseId": "C012",
+    "message": "오늘까지 반을 바꿔주지 않으면 선생님 이름과 대화 내용을 지역 커뮤니티에 전부 올리겠습니다. 학교가 어떻게 하는지 다들 알아야 합니다.",
+    "context": {
+      "communicationIntent": "ACTION_REQUEST",
+      "primaryTopic": "TEACHER_INTERACTION",
+      "secondaryTopics": [],
+      "primaryTopicReason": "교사의 지도 방식에 대한 민원. 소통 및 응대를 요구함."
+    },
+    "tags": [
+      {
+        "code": "THREAT_INTIMIDATION",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      },
+      {
+        "code": "PUBLIC_DISCLOSURE_THREAT",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      },
+      {
+        "code": "REPETITION",
+        "state": "PRESENT",
+        "evidenceSpans": [],
+        "reason": "동일 사안 반복 민원. 하지만 이 민원 하나로는 반복성 파악 못함."
+      },
+      {
+        "code": "UNREASONABLE_DEMAND",
+        "state": "PRESENT",
+        "evidenceSpans": [],
+        "reason": "불가안내 이후에도 반복 민원. "
+      },
+      {
+        "code": "PERSONAL_INFO_RISK",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      }
+    ]
+  },
+  {
+    "caseId": "C013",
+    "message": "지난주부터 같은 자리 변경을 네 번째 요청드립니다. 두 번 어렵다고 답변하신 건 알지만 바뀔 때까지 계속 연락드리겠습니다.",
+    "context": {
+      "communicationIntent": "ACTION_REQUEST",
+      "primaryTopic": "STUDENT_GUIDANCE",
+      "secondaryTopics": []
+    },
+    "tags": [
+      {
+        "code": "REPETITION",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      },
+      {
+        "code": "UNREASONABLE_DEMAND",
+        "state": "PRESENT",
+        "evidenceSpans": [
+          {
+            "text": "두 번 어렵다고 답변하신 건 알지만 바뀔 때까지 계속 연락드리겠습니다."
+          }
+        ],
+        "reason": "불가안내 이후에도 반복 민원. "
+      }
+    ]
+  },
+  {
+    "caseId": "C014",
+    "message": "전에 말씀드린 급식 문제는 아직 답이 없나요? 확인되었는지 다시 알려주세요.",
+    "context": {
+      "communicationIntent": "STATUS_FOLLOWUP",
+      "primaryTopic": "STUDENT_GUIDANCE",
+      "secondaryTopics": []
+    },
+    "tags": []
+  },
+  {
+    "caseId": "C015",
+    "message": "이번 지각 기록은 입시에 불리하니 없던 일로 처리해 주세요. 다른 학생에게는 말하지 않으면 아무 문제 없잖아요.",
+    "context": {
+      "communicationIntent": "ACTION_REQUEST",
+      "primaryTopic": "ATTENDANCE_SCHEDULE",
+      "secondaryTopics": []
+    },
+    "tags": [
+      {
+        "code": "UNREASONABLE_DEMAND",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      }
+    ]
+  },
+  {
+    "caseId": "C016",
+    "message": "아이가 대회 준비로 숙제를 못 했습니다. 이번 한 번만 감점 없이 다음 주에 내도 되는지 검토 부탁드립니다.",
+    "context": {
+      "communicationIntent": "ACTION_REQUEST",
+      "primaryTopic": "LEARNING_ASSIGNMENT",
+      "secondaryTopics": []
+    },
+    "tags": [
+      {
+        "code": "UNREASONABLE_DEMAND",
+        "state": "PRESENT",
+        "evidenceSpans": [
+          {
+            "text": "한 번만 감점 없이 다음 주에 내도 되는지 검토 부탁드립니다."
+          }
+        ],
+        "reason": "형평성 또는 적법한 절차를 벗어난 조치를 요구함."
+      }
+    ]
+  },
+  {
+    "caseId": "C017",
+    "message": "우리 아이와 다툰 학생의 이름과 보호자 연락처를 알려주세요. 제가 직접 연락해서 해결하겠습니다.",
+    "context": {
+      "communicationIntent": "ACTION_REQUEST",
+      "primaryTopic": "PEER_RELATIONSHIP",
+      "secondaryTopics": []
+    },
+    "tags": [
+      {
+        "code": "UNREASONABLE_DEMAND",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      },
+      {
+        "code": "PERSONAL_INFO_RISK",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      }
+    ]
+  },
+  {
+    "caseId": "C018",
+    "message": "긴급해서 남깁니다. 제 번호는 공일공-칠둘삼사-오육팔구이고 아이는 4학년 2반입니다. 오늘 중 통화 부탁드립니다.",
+    "context": {
+      "communicationIntent": "ACTION_REQUEST",
+      "primaryTopic": "TEACHER_INTERACTION",
+      "secondaryTopics": [],
+      "primaryTopicReason": "교사의 소통 및 응대 요구함"
+    },
+    "tags": [
+      {
+        "code": "PERSONAL_INFO_RISK",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      }
+    ]
+  },
+  {
+    "caseId": "C019",
+    "message": "일 처리를 왜 이렇게 ㄱ판으로 하시는지 모르겠네요. 선생님이 정말 무*능한 건 아닌지 의심됩니다.",
+    "context": {
+      "communicationIntent": "OBJECTION_COMPLAINT",
+      "primaryTopic": "TEACHER_INTERACTION",
+      "secondaryTopics": []
+    },
+    "tags": [
+      {
+        "code": "GENERAL_PROFANITY_EMOTION",
+        "state": "PRESENT",
+        "evidenceSpans": [
+          {
+            "text": "ㄱ판."
+          }
+        ],
+        "reason": "비속어가 있음."
+      },
+      {
+        "code": "DIRECT_INSULT_PERSONAL_ATTACK",
+        "state": "PRESENT",
+        "evidenceSpans": [
+          {
+            "text": "무능한."
+          }
+        ],
+        "reason": "교사 개인의 인격, 능력, 자격을 직접 깎아내리거나 비하함."
+      }
+    ]
+  },
+  {
+    "caseId": "C020",
+    "message": "답변을 두 번 받았지만 납득이 안 됩니다. 내일까지 조치가 없으면 교육청과 맘카페에 선생님 실명까지 알리겠습니다.",
+    "context": {
+      "communicationIntent": "OBJECTION_COMPLAINT",
+      "primaryTopic": "TEACHER_INTERACTION",
+      "secondaryTopics": []
+    },
+    "tags": [
+      {
+        "code": "THREAT_INTIMIDATION",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      },
+      {
+        "code": "LEGAL_ADMIN_ACTION_MENTION",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      },
+      {
+        "code": "PUBLIC_DISCLOSURE_THREAT",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      },
+      {
+        "code": "REPETITION",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      },
+      {
+        "code": "UNREASONABLE_DEMAND",
+        "state": "PRESENT",
+        "evidenceSpans": [
+          {
+            "text": "답변을 두 번 받았지만 납득이 안 됩니다."
+          }
+        ],
+        "reason": "원하는 답변을 받기를 무리하게 요구함."
+      },
+      {
+        "code": "PERSONAL_INFO_RISK",
+        "state": "PRESENT",
+        "evidenceSpans": []
+      }
+    ]
+  }
+]

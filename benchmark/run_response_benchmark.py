@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -8,6 +9,18 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from anthropic import Anthropic
 from google import genai
+
+
+# ============================================================
+# 프로젝트 루트를 Python import 경로에 추가
+# ============================================================
+
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = BASE_DIR.parent
+
+if str(PROJECT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_DIR))
+
 
 from app.rag.retriever import RagRetriever
 

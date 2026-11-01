@@ -275,6 +275,16 @@ def call_model(
 
 
 # ============================================================
+# 한국어 ROUGE Tokenizer
+# ============================================================
+
+class KoreanTokenizer:
+
+    def tokenize(self, text: str) -> list[str]:
+        return text.strip().split()
+
+
+# ============================================================
 # ROUGE 계산
 # ============================================================
 
@@ -289,6 +299,7 @@ def calculate_rouge(
             "rougeL",
         ],
         use_stemmer=False,
+        tokenizer=KoreanTokenizer(),
     )
 
     scores = scorer.score(

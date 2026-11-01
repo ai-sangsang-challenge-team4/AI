@@ -1,0 +1,4 @@
+﻿model,intent_preservation,information_preservation,emotion_moderation,expression_appropriateness,over_smoothing_prevention,total_score,rank
+Claude,4.75,4.8,4.15,4.55,4.75,23.0,1
+GPT,4.95,5.0,3.9,4.4,4.75,23.0,1
+Gemini,4.15,4.0,5.0,4.95,4.2,22.3,3

@@ -336,3 +336,67 @@ days_since_first_contact: {days_since_first_contact}
   "obfuscationType": "NONE"
 }}
 """.strip()
+
+def build_revision_prompt(
+    complaint: str,
+    tags: list[dict],
+    risk_score: int,
+    risk_level: str,
+) -> str:
+
+    detected_tags = [
+        tag
+        for tag in tags
+        if tag.get("state") == "PRESENT"
+    ]
+
+    return f"""
+당신은 학교 학부모 민원의 표현을 객관적이고 건설적인 표현으로 수정하는 AI입니다.
+
+목표는 민원인의 정당한 문제 제기 자체를 삭제하거나 약화시키는 것이 아니라,
+공격적·감정적·위협적·부당한 표현 등을 객관적인 사실 확인 및 요청 표현으로 바꾸는 것입니다.
+
+[원문]
+{complaint}
+
+[위험 분석]
+위험 점수: {risk_score}
+위험 등급: {risk_level}
+
+[탐지된 위험 태그]
+{detected_tags}
+
+반드시 JSON만 반환하십시오.
+
+반환 형식:
+
+{{
+  "finalRevision": {{
+    "reason": "전체 민원을 왜 이렇게 수정했는지 설명",
+    "content": "수정된 전체 민원"
+  }},
+  "tagSuggestions": [
+    {{
+      "code": "위험 태그 코드",
+      "originalExpression": "원문에서 실제 탐지된 표현",
+      "suggestedExpression": "해당 표현을 대체할 표현",
+      "reason": "왜 이렇게 수정했는지 설명"
+    }}
+  ]
+}}
+
+규칙:
+
+1. 탐지되지 않은 위험 태그를 새로 만들지 마십시오.
+2. 탐지된 모든 PRESENT 태그에 대해 tagSuggestions를 생성하십시오.
+3. originalExpression은 반드시 입력된 evidence에 포함된 실제 표현을 사용하십시오.
+4. 원문에 없는 사실을 추가하지 마십시오.
+5. 민원인의 정당한 요구사항이나 사실관계를 삭제하지 마십시오.
+6. 교사를 일방적으로 옹호하거나 민원인을 비난하지 마십시오.
+7. 위협 표현은 사실 확인 및 공식 절차 요청으로 변경하십시오.
+8. 모욕·비하 표현은 구체적인 우려 또는 확인 요청으로 변경하십시오.
+9. 부당한 특혜 요구는 규정 확인 및 적용 기준 문의 형태로 변경하십시오.
+10. 개인정보 관련 표현은 필요한 최소한의 정보만 요청하도록 변경하십시오.
+11. 수정된 전체 민원은 실제 학교 민원으로 사용할 수 있는 자연스러운 한국어로 작성하십시오.
+12. JSON 이외의 텍스트를 출력하지 마십시오.
+"""

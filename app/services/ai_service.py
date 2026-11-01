@@ -1,24 +1,34 @@
 import json
 
+from app.llm.claude_client import ClaudeLlmClient
 from app.llm.gemini_client import GeminiLlmClient
+
 from app.rag.retriever import RagRetriever
 from app.rag.context_example_retriever import ContextExampleRetriever
+
 from app.rag.prompt import (
     RISK_TAG_CODES,
     build_context_analysis_prompt,
     build_prompt,
     build_softened_summary_prompt,
 )
+
 from app.schemas.ai import (
     ContextAnalysisResult,
     LlmAnalysisMetadata,
     LlmRiskAnalysisResult,
 )
 
+from app.schemas.revision import (
+    RevisionRequest,
+    RevisionResult,
+)
+
 
 class AiService:
 
     def __init__(self):
+
         # ====================================================
         # RAG
         # ====================================================
@@ -33,18 +43,24 @@ class AiService:
         # LLM
         # ====================================================
 
-        # 현재 백엔드의 LlmRiskAnalysisResult 계약에 맞는
-        # 위험 요소 분석용 LLM
-        self.risk_llm_client = GeminiLlmClient(
-            model="gemini-3.5-flash-lite"
-        )
+        # ----------------------------------------------------
+        # Claude
+        # ----------------------------------------------------
 
-        # 문맥 분석용 LLM
-        self.context_llm_client = GeminiLlmClient(
-            model="gemini-3.5-flash-lite"
-        )
+        # 위험 요소 분석
+        self.risk_llm_client = ClaudeLlmClient()
 
-        # 완충 요약용 LLM
+        # 문맥 분석
+        self.context_llm_client = ClaudeLlmClient()
+
+        # 학부모용 민원 표현 수정안
+        self.revision_llm_client = ClaudeLlmClient()
+
+        # ----------------------------------------------------
+        # Gemini
+        # ----------------------------------------------------
+
+        # 완충 요약
         self.summary_llm_client = GeminiLlmClient(
             model="gemini-3.5-flash-lite"
         )
@@ -77,7 +93,7 @@ class AiService:
         )
 
         # ----------------------------------------------------
-        # 3. LLM 호출
+        # 3. Claude 호출
         # ----------------------------------------------------
 
         response = self.risk_llm_client.generate(
@@ -117,7 +133,7 @@ class AiService:
                 "metadata": risk_data.get(
                     "metadata",
                     {
-                        "modelName": "gemini-3.5-flash-lite",
+                        "modelName": self.risk_llm_client.model,
                         "temperature": 0.0,
                     },
                 ),
@@ -162,7 +178,7 @@ class AiService:
         )
 
         # ----------------------------------------------------
-        # 4. LLM 호출
+        # 4. Claude 호출
         # ----------------------------------------------------
 
         response = self.context_llm_client.generate(
@@ -205,6 +221,113 @@ class AiService:
         )
 
         return response.strip()
+
+    # ========================================================
+    # 내부 기능: 학부모용 민원 표현 수정안
+    #
+    # 선정 모델: Claude
+    #
+    # 평가 기준:
+    # 1. 의도 보존
+    # 2. 정보 보존
+    # 3. 감정 완화
+    # 4. 표현 적절성
+    # 5. 과도한 순화 방지
+    # ========================================================
+
+    def revise_complaint(
+        self,
+        complaint: str,
+    ) -> RevisionResult:
+
+        prompt = self._build_revision_prompt(
+            complaint
+        )
+
+        response = self.revision_llm_client.generate(
+            prompt
+        )
+
+        data = self._parse_json_response(
+            response,
+            error_message=(
+                "민원 표현 수정안 LLM이 "
+                "유효한 JSON을 반환하지 않았습니다."
+            ),
+        )
+
+        return RevisionResult.model_validate(
+            data
+        )
+
+    # ========================================================
+    # 수정안 Prompt
+    # ========================================================
+
+    def _build_revision_prompt(
+        self,
+        complaint: str,
+    ) -> str:
+
+        return f"""
+당신은 학교 학부모 민원의 표현을 전문적이고 건설적인 방식으로 수정하는 AI입니다.
+
+입력된 민원의 핵심적인 의도와 사실관계를 유지하면서,
+학교와 교사가 내용을 정확하게 이해하고 대응할 수 있는 표현으로 수정하십시오.
+
+다음 다섯 가지 기준을 반드시 지키십시오.
+
+1. 의도 보존
+- 학부모가 실제로 요청하거나 문제를 제기하려는 핵심 의도를 유지하십시오.
+- 원문에 없는 새로운 요구사항을 추가하지 마십시오.
+
+2. 정보 보존
+- 원문에 포함된 사실, 상황, 요청사항을 가능한 한 유지하십시오.
+- 사실관계를 임의로 삭제하거나 변경하지 마십시오.
+- 원문에 없는 구체적인 사실을 만들어내지 마십시오.
+
+3. 감정 완화
+- 공격적이거나 감정적인 표현은 정중하고 객관적인 표현으로 바꾸십시오.
+- 비난, 모욕, 협박으로 읽힐 수 있는 표현은 완화하십시오.
+- 단, 민원의 정당한 문제 제기 자체를 삭제하지 마십시오.
+
+4. 표현 적절성
+- 학부모가 실제 학교 민원에 사용할 수 있는 자연스러운 문장으로 작성하십시오.
+- 지나치게 딱딱하거나 법률문서와 같은 표현은 피하십시오.
+- 구체적인 요청사항은 명확하게 남겨두십시오.
+
+5. 과도한 순화 방지
+- 학부모의 문제 제기를 단순한 문의나 감사 표현으로 바꾸지 마십시오.
+- 부당한 상황에 대한 문제 제기나 개선 요구가 있었다면 그 의미를 유지하십시오.
+- 원문의 핵심적인 불만이나 요청을 삭제해서는 안 됩니다.
+
+중요한 원칙:
+
+- 원문에 없는 사실을 추가하지 마십시오.
+- 원문의 의미를 왜곡하지 마십시오.
+- 단순히 문법만 수정하는 것이 아니라 실제로 상대방이 받아들이기 좋은 표현으로 개선하십시오.
+- 그러나 민원의 핵심적인 주장이나 요구를 약화시키지는 마십시오.
+- 개인정보나 민감정보가 있다면 원문의 내용을 임의로 확대하지 마십시오.
+
+반드시 다음 JSON 형식만 반환하십시오.
+
+{{
+  "reason": "수정이 필요한 이유와 수정 방향을 간결하게 설명",
+  "content": "수정된 민원 표현"
+}}
+
+reason은 수정 과정에서 어떤 표현을 어떤 방향으로 조정했는지 설명하십시오.
+
+content에는 실제 학부모가 학교에 전달할 수 있는 최종 수정안을 작성하십시오.
+
+다른 설명이나 Markdown은 출력하지 마십시오.
+
+==============================
+원문 민원
+==============================
+
+{complaint}
+""".strip()
 
     # ========================================================
     # RiskTagCode 검증
@@ -288,7 +411,9 @@ class AiService:
             print(
                 "===== LLM INVALID JSON ====="
             )
+
             print(response)
+
             print(
                 "============================"
             )

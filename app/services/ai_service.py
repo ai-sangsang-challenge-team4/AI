@@ -1,7 +1,7 @@
 import json
 
 from app.llm.gemini_client import GeminiLlmClient
-from app.rag.mock_retriever import MockRagRetriever
+from app.rag.retriever import RagRetriever
 from app.rag.context_example_retriever import ContextExampleRetriever
 from app.rag.prompt import (
     RISK_TAG_CODES,
@@ -9,56 +9,85 @@ from app.rag.prompt import (
     build_prompt,
     build_softened_summary_prompt,
 )
-from app.schemas.ai import AiAnalysisResult
+from app.schemas.ai import (
+    ContextAnalysisResult,
+    LlmAnalysisMetadata,
+    LlmRiskAnalysisResult,
+)
 
 
 class AiService:
 
     def __init__(self):
-        # 위험 요소 분석용 RAG
-        self.retriever = MockRagRetriever()
+        # ====================================================
+        # RAG
+        # ====================================================
 
-        # 교사 검토 사례 검색
+        # 실제 Chroma + BGE-M3 Retriever
+        self.retriever = RagRetriever()
+
+        # 교사 검토 완료 사례 Retriever
         self.example_retriever = ContextExampleRetriever()
 
-        # 위험 요소 태깅
+        # ====================================================
+        # LLM
+        # ====================================================
+
+        # 현재 백엔드의 LlmRiskAnalysisResult 계약에 맞는
+        # 위험 요소 분석용 LLM
         self.risk_llm_client = GeminiLlmClient(
             model="gemini-3.5-flash-lite"
         )
 
-        # 완충 요약
-        self.summary_llm_client = GeminiLlmClient(
-            model="gemini-3.5-flash-lite"
-        )
-
-        # 문맥 분석
+        # 문맥 분석용 LLM
         self.context_llm_client = GeminiLlmClient(
             model="gemini-3.5-flash-lite"
         )
 
+        # 완충 요약용 LLM
+        self.summary_llm_client = GeminiLlmClient(
+            model="gemini-3.5-flash-lite"
+        )
+
+    # ========================================================
+    # Backend /api/v1/ai/analyze
+    # ========================================================
+
     def analyze(
         self,
         complaint: str,
-    ) -> AiAnalysisResult:
+    ) -> LlmRiskAnalysisResult:
 
+        # ----------------------------------------------------
         # 1. 관련 자료 검색
+        # ----------------------------------------------------
+
         documents = self.retriever.search(
             complaint,
             k=3,
         )
 
-        # 2. 위험 요소 태깅 프롬프트 생성
+        # ----------------------------------------------------
+        # 2. 위험 요소 분석 프롬프트
+        # ----------------------------------------------------
+
         prompt = build_prompt(
             complaint=complaint,
             documents=documents,
         )
 
-        # 3. Gemini 위험 요소 분석
+        # ----------------------------------------------------
+        # 3. LLM 호출
+        # ----------------------------------------------------
+
         response = self.risk_llm_client.generate(
             prompt
         )
 
-        # 4. Gemini JSON 파싱
+        # ----------------------------------------------------
+        # 4. JSON 파싱
+        # ----------------------------------------------------
+
         risk_data = self._parse_json_response(
             response,
             error_message=(
@@ -67,68 +96,100 @@ class AiService:
             ),
         )
 
+        # ----------------------------------------------------
         # 5. RiskTagCode 검증
+        # ----------------------------------------------------
+
         self._validate_risk_tags(
             risk_data
         )
 
-        # 6. 문맥 분석
-        context = self.analyze_context(
-            complaint
+        # ----------------------------------------------------
+        # 6. Backend 계약에 맞는 결과 생성
+        # ----------------------------------------------------
+
+        return LlmRiskAnalysisResult.model_validate(
+            {
+                "tags": risk_data.get(
+                    "tags",
+                    [],
+                ),
+                "metadata": risk_data.get(
+                    "metadata",
+                    {
+                        "modelName": "gemini-3.5-flash-lite",
+                        "temperature": 0.0,
+                    },
+                ),
+            }
         )
 
-        # 7. 최종 데이터 구성
-        data = {
-            **risk_data,
-            "context": context,
-        }
-
-        # 8. 완충 요약
-        softened_summary = self.soften_summary(
-            complaint
-        )
-
-        data["softenedSummary"] = softened_summary
-
-        # 9. 최종 결과 검증
-        return AiAnalysisResult.model_validate(
-            data
-        )
+    # ========================================================
+    # 내부 기능: 문맥 분석
+    #
+    # 현재 /analyze 응답에는 포함하지 않는다.
+    # 이후 별도 Backend API가 필요할 때 사용한다.
+    # ========================================================
 
     def analyze_context(
         self,
         complaint: str,
-    ) -> dict:
+    ) -> ContextAnalysisResult:
 
+        # ----------------------------------------------------
         # 1. 과거 교사 검토 사례 검색
+        # ----------------------------------------------------
+
         examples = self.example_retriever.search(
             complaint
         )
 
-        # 2. 기본 문맥 분석 프롬프트 생성
+        # ----------------------------------------------------
+        # 2. 기본 프롬프트
+        # ----------------------------------------------------
+
         prompt = build_context_analysis_prompt(
             complaint=complaint,
         )
 
-        # 3. 과거 검토 사례를 few-shot 참고자료로 추가
+        # ----------------------------------------------------
+        # 3. 과거 검토 사례 추가
+        # ----------------------------------------------------
+
         prompt = self._append_context_examples(
             prompt=prompt,
             examples=examples,
         )
 
-        # 4. Gemini 문맥 분석
+        # ----------------------------------------------------
+        # 4. LLM 호출
+        # ----------------------------------------------------
+
         response = self.context_llm_client.generate(
             prompt
         )
 
+        # ----------------------------------------------------
         # 5. JSON 파싱
-        return self._parse_json_response(
+        # ----------------------------------------------------
+
+        data = self._parse_json_response(
             response,
             error_message=(
                 "문맥 분석 LLM이 "
                 "유효한 JSON을 반환하지 않았습니다."
             ),
         )
+
+        return ContextAnalysisResult.model_validate(
+            data
+        )
+
+    # ========================================================
+    # 내부 기능: 완충 요약
+    #
+    # 현재 /analyze 응답에는 포함하지 않는다.
+    # ========================================================
 
     def soften_summary(
         self,
@@ -144,6 +205,10 @@ class AiService:
         )
 
         return response.strip()
+
+    # ========================================================
+    # RiskTagCode 검증
+    # ========================================================
 
     def _validate_risk_tags(
         self,
@@ -161,12 +226,22 @@ class AiService:
             )
 
         for tag in tags:
+
+            if not isinstance(tag, dict):
+                raise ValueError(
+                    "위험 요소 분석 결과의 각 tag는 객체여야 합니다."
+                )
+
             code = tag.get("code")
 
             if code not in RISK_TAG_CODES:
                 raise ValueError(
                     f"허용되지 않은 RiskTagCode입니다: {code}"
                 )
+
+    # ========================================================
+    # JSON 파싱
+    # ========================================================
 
     def _parse_json_response(
         self,
@@ -176,14 +251,18 @@ class AiService:
 
         response = response.strip()
 
-        # Gemini가 Markdown 코드블록으로 JSON을 반환하는 경우 처리
+        # ----------------------------------------------------
+        # Markdown 코드블록 제거
+        # ----------------------------------------------------
+
         if response.startswith("```"):
+
             if response.startswith("```json"):
                 response = response[
                     len("```json"):
                 ]
 
-            elif response.startswith("```"):
+            else:
                 response = response[
                     len("```"):
                 ]
@@ -195,10 +274,17 @@ class AiService:
 
             response = response.strip()
 
+        # ----------------------------------------------------
+        # JSON 파싱
+        # ----------------------------------------------------
+
         try:
-            return json.loads(response)
+            data = json.loads(
+                response
+            )
 
         except json.JSONDecodeError as exc:
+
             print(
                 "===== LLM INVALID JSON ====="
             )
@@ -211,6 +297,17 @@ class AiService:
                 error_message
             ) from exc
 
+        if not isinstance(data, dict):
+            raise ValueError(
+                error_message
+            )
+
+        return data
+
+    # ========================================================
+    # 문맥 분석용 과거 사례 추가
+    # ========================================================
+
     def _append_context_examples(
         self,
         prompt: str,
@@ -220,6 +317,7 @@ class AiService:
         example_blocks = []
 
         for example in examples:
+
             context = example.get(
                 "context",
                 {},

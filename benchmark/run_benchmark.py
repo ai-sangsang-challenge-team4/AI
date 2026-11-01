@@ -74,11 +74,11 @@ RISK_TAGS = {
     "PROFANITY",
     "INSULT",
     "THREAT",
-    "LEGAL_ADMIN_ACTION_MENTION",
+    "LEGAL",
     "EXPOSURE",
     "REPEAT",
-    "UNREASONABLE_DEMAND",
-    "PERSONAL_INFO_RISK",
+    "UNFAIR_REQUEST",
+    "PRIVACY",
 }
 
 
@@ -121,11 +121,11 @@ riskTags의 code는 다음 중 실제 해당하는 것만 선택하십시오.
 - PROFANITY
 - INSULT
 - THREAT
-- LEGAL_ADMIN_ACTION_MENTION
+- LEGAL
 - EXPOSURE
 - REPEAT
-- UNREASONABLE_DEMAND
-- PERSONAL_INFO_RISK
+- UNFAIR_REQUEST
+- PRIVACY
 
 해당 위험요소가 없다면 riskTags는 빈 배열로 반환하십시오.
 

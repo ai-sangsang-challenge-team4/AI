@@ -1,3 +1,4 @@
+
 from pathlib import Path
 
 from langchain_chroma import Chroma
@@ -7,13 +8,20 @@ from langchain_huggingface import HuggingFaceEmbeddings
 VECTORSTORE_DIR = Path("data/vectorstore")
 EMBEDDING_MODEL = "BAAI/bge-m3"
 
+DEFAULT_SCORE_THRESHOLD = 0.35
+DEFAULT_MAX_RESULTS = 3
+DEFAULT_SEARCH_K = 10
+DEFAULT_MAX_PER_SOURCE = 2
+
 
 class RagRetriever:
 
     def __init__(
         self,
-        max_results: int = 5,
-        max_per_source: int = 2,
+        max_results: int = DEFAULT_MAX_RESULTS,
+        max_per_source: int = DEFAULT_MAX_PER_SOURCE,
+        score_threshold: float = DEFAULT_SCORE_THRESHOLD,
+        search_k: int = DEFAULT_SEARCH_K,
     ):
         embeddings = HuggingFaceEmbeddings(
             model_name=EMBEDDING_MODEL,
@@ -33,6 +41,8 @@ class RagRetriever:
 
         self.max_results = max_results
         self.max_per_source = max_per_source
+        self.score_threshold = score_threshold
+        self.search_k = search_k
 
     def search(
         self,
@@ -42,8 +52,10 @@ class RagRetriever:
 
         limit = k or self.max_results
 
-        # 중복을 줄이기 위해 후보를 넉넉하게 검색
-        search_k = max(limit * 3, 10)
+        search_k = max(
+            self.search_k,
+            limit * 3,
+        )
 
         results = (
             self.vectorstore
@@ -55,8 +67,28 @@ class RagRetriever:
 
         documents = []
         source_counts: dict[str, int] = {}
+        seen_chunks: set[str] = set()
 
         for document, score in results:
+
+            score = float(score)
+
+            # 명백히 관련성이 낮은 검색 결과 제거
+            if score < self.score_threshold:
+                continue
+
+            content = document.page_content.strip()
+
+            if not content:
+                continue
+
+            # 동일 chunk 중복 제거
+            chunk_key = content
+
+            if chunk_key in seen_chunks:
+                continue
+
+            seen_chunks.add(chunk_key)
 
             source = document.metadata.get(
                 "source",
@@ -68,7 +100,7 @@ class RagRetriever:
                 0,
             )
 
-            # 같은 문서가 지나치게 많이 들어오는 것을 방지
+            # 하나의 문서가 검색 결과를 독점하지 않도록 제한
             if current_count >= self.max_per_source:
                 continue
 
@@ -76,10 +108,10 @@ class RagRetriever:
 
             documents.append(
                 {
-                    "content": document.page_content,
+                    "content": content,
                     "source": source,
                     "page": document.metadata.get("page"),
-                    "score": float(score),
+                    "score": score,
                 }
             )
 

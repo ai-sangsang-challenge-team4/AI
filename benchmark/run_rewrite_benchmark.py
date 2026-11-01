@@ -2,6 +2,7 @@ import json
 import os
 import time
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -20,55 +21,59 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BASE_DIR.parent
 
-CASES_PATH = BASE_DIR / "cases.json"
+# 기존 Risk Tagging 벤치마크와 동일한 데이터 사용
+DATA_PATH = (
+    PROJECT_DIR
+    / "data"
+    / "context_examples.json"
+)
 
-RESULT_DIR = BASE_DIR / "results"
-RESULT_DIR.mkdir(parents=True, exist_ok=True)
+RESULT_DIR = (
+    BASE_DIR
+    / "results"
+)
 
-RESULT_CSV = RESULT_DIR / "rewrite_benchmark_results.csv"
-HUMAN_EVAL_CSV = RESULT_DIR / "rewrite_human_eval.csv"
+RESULT_DIR.mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
+RESULT_CSV = (
+    RESULT_DIR
+    / "rewrite_benchmark_results.csv"
+)
+
+HUMAN_EVAL_CSV = (
+    RESULT_DIR
+    / "rewrite_human_eval.csv"
+)
 
 
 # ============================================================
 # 모델 설정
 # ============================================================
 
-MODELS = [
-    "GPT",
-    "Claude",
-    "Gemini",
-]
-
-GPT_MODEL = os.getenv(
-    "GPT_MODEL",
-    "gpt-5-mini",
-)
-
-CLAUDE_MODEL = os.getenv(
-    "CLAUDE_MODEL",
-    "claude-sonnet-5-5",
-)
-
-GEMINI_MODEL = os.getenv(
-    "GEMINI_MODEL",
-    "gemini-3.5-flash-lite",
-)
+MODELS = {
+    "GPT": os.getenv("OPENAI_MODEL"),
+    "Claude": os.getenv("ANTHROPIC_MODEL"),
+    "Gemini": os.getenv("GEMINI_MODEL"),
+}
 
 
 # ============================================================
-# API Client
+# 클라이언트
 # ============================================================
 
 openai_client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY")
+    api_key=os.environ["OPENAI_API_KEY"]
 )
 
 anthropic_client = Anthropic(
-    api_key=os.getenv("ANTHROPIC_API_KEY")
+    api_key=os.environ["ANTHROPIC_API_KEY"]
 )
 
 gemini_client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
+    api_key=os.environ["GEMINI_API_KEY"]
 )
 
 
@@ -82,24 +87,30 @@ SYSTEM_PROMPT = """
 학부모가 작성한 민원의 핵심 의도와 요구사항은 유지하면서
 공격적이거나 감정적인 표현을 보다 중립적이고 건설적인 표현으로 수정합니다.
 
-다음 원칙을 반드시 지킵니다.
+반드시 다음 원칙을 지키십시오.
 
-1. 원문의 핵심 의도와 요구사항을 유지합니다.
-2. 중요한 사실관계를 삭제하지 않습니다.
-3. 욕설, 모욕, 비난, 공격적 표현은 중립적으로 완화합니다.
-4. 정당한 문제 제기나 민원인의 요구를 임의로 삭제하지 않습니다.
-5. 민원인이 제기한 문제를 임의로 사실로 확정하지 않습니다.
-6. 원문에 없는 새로운 사실을 추가하지 않습니다.
-7. 법률적 판단이나 학교의 책임을 임의로 확정하지 않습니다.
-8. 위협이나 강한 표현이 있는 경우에도 그 의미 자체를 임의로 삭제하지 않습니다.
-9. 개인정보가 포함되어 있더라도 불필요하게 반복하지 않습니다.
-10. 실제 학교 민원에 사용할 수 있는 정중하고 명확한 문장으로 작성합니다.
+1. 원문의 핵심 의도와 요구사항을 유지하십시오.
+2. 중요한 사실관계를 삭제하지 마십시오.
+3. 욕설, 모욕, 비난, 공격적인 표현은 중립적이고 정중한 표현으로 완화하십시오.
+4. 민원인의 정당한 문제 제기나 요구를 임의로 삭제하지 마십시오.
+5. 원문에 없는 새로운 사실을 추가하지 마십시오.
+6. 민원인이 제기한 주장을 확인된 사실처럼 단정하지 마십시오.
+7. 법률적 판단이나 학교의 책임을 임의로 확정하지 마십시오.
+8. 교육청 민원, 공식 민원 제기 등의 의사표시는
+   감정적인 표현만 완화하고 그 의미 자체는 유지하십시오.
+9. 개인정보가 포함되어 있는 경우 불필요하게 반복하지 마십시오.
+10. 실제 학교 민원에 사용할 수 있는 정중하고 명확한 문장으로 작성하십시오.
+11. 원문의 의미를 지나치게 순화하여 민원인의 요구를 약화시키지 마십시오.
 
-출력은 반드시 다음 JSON 형식을 따릅니다.
+출력은 반드시 JSON만 반환하십시오.
+
+반환 형식:
 
 {
   "revised_message": "수정된 민원 내용"
 }
+
+JSON 이외의 설명은 출력하지 마십시오.
 """
 
 
@@ -107,9 +118,10 @@ SYSTEM_PROMPT = """
 # 데이터 로드
 # ============================================================
 
-def load_cases():
+def load_dataset() -> list[dict[str, Any]]:
+
     with open(
-        CASES_PATH,
+        DATA_PATH,
         "r",
         encoding="utf-8",
     ) as f:
@@ -120,15 +132,18 @@ def load_cases():
 # JSON 파싱
 # ============================================================
 
-def parse_json_response(text: str) -> dict:
+def parse_json_response(
+    text: str,
+) -> dict[str, Any]:
 
     text = text.strip()
 
-    # ```json ... ``` 제거
+    # 혹시 모델이 markdown code fence를 붙인 경우 제거
     if text.startswith("```"):
+
         lines = text.splitlines()
 
-        if lines[0].startswith("```"):
+        if lines:
             lines = lines[1:]
 
         if lines and lines[-1].strip() == "```":
@@ -143,44 +158,39 @@ def parse_json_response(text: str) -> dict:
 # GPT
 # ============================================================
 
-def call_gpt(message: str):
+def call_gpt(
+    message: str,
+) -> dict[str, Any]:
 
     start = time.perf_counter()
 
-    response = openai_client.chat.completions.create(
-        model=GPT_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT,
-            },
-            {
-                "role": "user",
-                "content": message,
-            },
-        ],
-        temperature=0,
+    response = openai_client.responses.create(
+        model=MODELS["GPT"],
+        instructions=SYSTEM_PROMPT,
+        input=message,
     )
 
-    latency_ms = (
+    latency = (
         time.perf_counter() - start
     ) * 1000
 
-    text = response.choices[0].message.content
+    usage = response.usage
 
-    result = parse_json_response(text)
+    result = parse_json_response(
+        response.output_text
+    )
 
     return {
-        "revised_message": result["revised_message"],
-        "latency_ms": latency_ms,
+        "text": result["revised_message"],
+        "latency_ms": latency,
         "input_tokens": getattr(
-            response.usage,
-            "prompt_tokens",
+            usage,
+            "input_tokens",
             None,
         ),
         "output_tokens": getattr(
-            response.usage,
-            "completion_tokens",
+            usage,
+            "output_tokens",
             None,
         ),
     }
@@ -190,14 +200,15 @@ def call_gpt(message: str):
 # Claude
 # ============================================================
 
-def call_claude(message: str):
+def call_claude(
+    message: str,
+) -> dict[str, Any]:
 
     start = time.perf_counter()
 
     response = anthropic_client.messages.create(
-        model=CLAUDE_MODEL,
+        model=MODELS["Claude"],
         max_tokens=1000,
-        temperature=0,
         system=SYSTEM_PROMPT,
         messages=[
             {
@@ -207,17 +218,22 @@ def call_claude(message: str):
         ],
     )
 
-    latency_ms = (
+    latency = (
         time.perf_counter() - start
     ) * 1000
 
-    text = response.content[0].text
+    text = ""
+
+    for block in response.content:
+
+        if hasattr(block, "text"):
+            text += block.text
 
     result = parse_json_response(text)
 
     return {
-        "revised_message": result["revised_message"],
-        "latency_ms": latency_ms,
+        "text": result["revised_message"],
+        "latency_ms": latency,
         "input_tokens": getattr(
             response.usage,
             "input_tokens",
@@ -235,27 +251,24 @@ def call_claude(message: str):
 # Gemini
 # ============================================================
 
-def call_gemini(message: str):
+def call_gemini(
+    message: str,
+) -> dict[str, Any]:
 
     start = time.perf_counter()
 
     response = gemini_client.models.generate_content(
-        model=GEMINI_MODEL,
+        model=MODELS["Gemini"],
         contents=message,
         config={
             "system_instruction": SYSTEM_PROMPT,
-            "temperature": 0,
             "response_mime_type": "application/json",
         },
     )
 
-    latency_ms = (
+    latency = (
         time.perf_counter() - start
     ) * 1000
-
-    text = response.text
-
-    result = parse_json_response(text)
 
     usage = getattr(
         response,
@@ -263,23 +276,23 @@ def call_gemini(message: str):
         None,
     )
 
-    input_tokens = getattr(
-        usage,
-        "prompt_token_count",
-        None,
-    )
-
-    output_tokens = getattr(
-        usage,
-        "candidates_token_count",
-        None,
+    result = parse_json_response(
+        response.text
     )
 
     return {
-        "revised_message": result["revised_message"],
-        "latency_ms": latency_ms,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
+        "text": result["revised_message"],
+        "latency_ms": latency,
+        "input_tokens": getattr(
+            usage,
+            "prompt_token_count",
+            None,
+        ),
+        "output_tokens": getattr(
+            usage,
+            "candidates_token_count",
+            None,
+        ),
     }
 
 
@@ -290,7 +303,7 @@ def call_gemini(message: str):
 def call_model(
     model_name: str,
     message: str,
-):
+) -> dict[str, Any]:
 
     if model_name == "GPT":
         return call_gpt(message)
@@ -307,77 +320,62 @@ def call_model(
 
 
 # ============================================================
-# Human Evaluation CSV 생성
-# ============================================================
-
-def create_human_eval_file(df: pd.DataFrame):
-
-    rows = []
-
-    for _, row in df.iterrows():
-
-        rows.append({
-            "case_id": row["case_id"],
-            "model": row["model"],
-            "original_message": row["original_message"],
-            "revised_message": row["revised_message"],
-
-            # 사람이 직접 입력
-            "intent_preservation": "",
-            "information_preservation": "",
-            "emotion_moderation": "",
-            "expression_appropriateness": "",
-            "over_smoothing_prevention": "",
-
-            "total_score": "",
-            "evaluator_note": "",
-        })
-
-    human_df = pd.DataFrame(rows)
-
-    human_df.to_csv(
-        HUMAN_EVAL_CSV,
-        index=False,
-        encoding="utf-8-sig",
-    )
-
-
-# ============================================================
 # Main
 # ============================================================
 
 def main():
 
-    cases = load_cases()
+    data = load_dataset()
 
     print()
     print("=" * 60)
     print("민원 표현 수정 LLM BENCHMARK")
     print("=" * 60)
     print(
-        f"총 데이터: {len(cases)}건"
+        f"총 데이터: {len(data)}건"
     )
     print()
 
     results = []
 
-    for index, case in enumerate(
-        cases,
+    for index, row in enumerate(
+        data,
         start=1,
     ):
 
-        case_id = case.get(
-            "caseId",
-            case.get("case_id"),
+        # 기존 context_examples.json의 필드 사용
+        case_id = row.get(
+            "caseId"
         )
 
-        message = case.get(
-            "message",
-            case.get("original_message"),
+        message = row.get(
+            "message"
         )
+
+        if not case_id:
+            case_id = row.get(
+                "case_id"
+            )
+
+        if not message:
+            message = row.get(
+                "original_message"
+            )
+
+        if not case_id or not message:
+
+            print(
+                f"[{index}/{len(data)}] "
+                "ERROR: 데이터 형식 확인 필요"
+            )
+
+            print(row)
+
+            continue
 
         print(
-            f"[{index}/{len(cases)}] {case_id}"
+            f"[{index}/{len(data)}] "
+            f"{case_id}"
         )
 
         for model_name in MODELS:
@@ -398,7 +396,7 @@ def main():
                     "model": model_name,
                     "original_message": message,
                     "revised_message": result[
-                        "revised_message"
+                        "text"
                     ],
                     "latency_ms": result[
                         "latency_ms"
@@ -415,7 +413,10 @@ def main():
             except Exception as e:
 
                 print(
-                    f"    ERROR: {e}"
+                    f"    ERROR: {type(e).__name__}"
+                )
+                print(
+                    f"    {e}"
                 )
 
                 results.append({
@@ -426,8 +427,12 @@ def main():
                     "latency_ms": None,
                     "input_tokens": None,
                     "output_tokens": None,
-                    "status": f"FAILED: {e}",
+                    "status": "FAILED",
                 })
+
+    # ========================================================
+    # 결과 저장
+    # ========================================================
 
     df = pd.DataFrame(results)
 
@@ -437,7 +442,56 @@ def main():
         encoding="utf-8-sig",
     )
 
-    create_human_eval_file(df)
+    # ========================================================
+    # 사람 평가용 CSV
+    # ========================================================
+
+    human_eval = df[
+        [
+            "case_id",
+            "model",
+            "original_message",
+            "revised_message",
+        ]
+    ].copy()
+
+    human_eval[
+        "intent_preservation"
+    ] = ""
+
+    human_eval[
+        "information_preservation"
+    ] = ""
+
+    human_eval[
+        "emotion_moderation"
+    ] = ""
+
+    human_eval[
+        "expression_appropriateness"
+    ] = ""
+
+    human_eval[
+        "over_smoothing_prevention"
+    ] = ""
+
+    human_eval[
+        "total_score"
+    ] = ""
+
+    human_eval[
+        "evaluator_note"
+    ] = ""
+
+    human_eval.to_csv(
+        HUMAN_EVAL_CSV,
+        index=False,
+        encoding="utf-8-sig",
+    )
+
+    # ========================================================
+    # Summary
+    # ========================================================
 
     print()
     print("=" * 60)
@@ -453,23 +507,18 @@ def main():
     )
 
     print()
+
+    success_count = (
+        df["status"]
+        == "SUCCESS"
+    ).sum()
+
     print(
-        "사람 평가 기준:"
+        f"성공: {success_count}"
     )
+
     print(
-        "1. 의도 보존"
-    )
-    print(
-        "2. 핵심 정보 보존"
-    )
-    print(
-        "3. 감정 완화"
-    )
-    print(
-        "4. 표현 적절성"
-    )
-    print(
-        "5. 과도한 순화 방지"
+        f"전체: {len(df)}"
     )
 
 

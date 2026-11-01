@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from app.schemas.ai import AiAnalysisResult
+from app.schemas.ai import LlmRiskAnalysisResult
 from app.schemas.revision import (
     RevisionRequest,
     RevisionResult,
@@ -23,7 +23,7 @@ class AiAnalyzeRequest(BaseModel):
 
 @router.post(
     "/analyze",
-    response_model=AiAnalysisResult,
+    response_model=LlmRiskAnalysisResult,
 )
 def analyze(
     request: AiAnalyzeRequest,

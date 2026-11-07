@@ -157,13 +157,10 @@ class AiService:
                     "tags",
                     [],
                 ),
-                "metadata": risk_data.get(
-                    "metadata",
-                    {
-                        "modelName": self.risk_llm_client.model,
-                        "temperature": 0.0,
-                    },
-                ),
+                "metadata": {
+                    "modelName": self.risk_llm_client.model,
+                    "temperature": 0.0,
+                },
             }
         )
 

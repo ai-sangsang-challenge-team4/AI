@@ -24,6 +24,11 @@ from app.schemas.revision import (
     RevisionResult,
 )
 
+from app.schemas.support import (
+    SummaryResult,
+    ResponseDraftResult,
+)
+
 
 class AiService:
 
@@ -62,6 +67,11 @@ class AiService:
 
         # 완충 요약
         self.summary_llm_client = GeminiLlmClient(
+            model="gemini-3.5-flash-lite"
+        )
+
+        # 교사용 답변 초안
+        self.response_draft_llm_client = GeminiLlmClient(
             model="gemini-3.5-flash-lite"
         )
 
@@ -221,6 +231,81 @@ class AiService:
         )
 
         return response.strip()
+    
+        # ========================================================
+    # Backend 연동용: 완충 요약 생성
+    # ========================================================
+
+    def generate_summary(
+        self,
+        content: str,
+    ) -> SummaryResult:
+
+        summary = self.soften_summary(
+            content
+        )
+
+        return SummaryResult(
+            summary=summary,
+            modelName=self.summary_llm_client.model,
+        )
+
+
+    # ========================================================
+    # Backend 연동용: 교사용 AI 답변 초안
+    #
+    # 내부 처리:
+    # 1. Claude 문맥 분석
+    # 2. BGE-M3 RAG 검색
+    # 3. Gemini 답변 초안 생성
+    # ========================================================
+
+    def generate_response_draft(
+        self,
+        content: str,
+    ) -> ResponseDraftResult:
+
+        # ----------------------------------------------------
+        # 1. 민원 문맥 분석
+        # ----------------------------------------------------
+
+        context = self.analyze_context(
+            content
+        )
+
+        # ----------------------------------------------------
+        # 2. 관련 근거 자료 검색
+        # ----------------------------------------------------
+
+        documents = self.retriever.search(
+            content,
+            k=3,
+        )
+
+        # ----------------------------------------------------
+        # 3. 답변 초안 프롬프트 생성
+        # ----------------------------------------------------
+
+        prompt = self._build_response_draft_prompt(
+            content=content,
+            context=context,
+            documents=documents,
+        )
+
+        # ----------------------------------------------------
+        # 4. Gemini 호출
+        # ----------------------------------------------------
+
+        response = (
+            self.response_draft_llm_client
+            .generate(prompt)
+            .strip()
+        )
+
+        return ResponseDraftResult(
+            content=response,
+            modelName=self.response_draft_llm_client.model,
+        )
 
     # ========================================================
     # 내부 기능: 학부모용 민원 표현 수정안
@@ -408,6 +493,121 @@ JSON 앞뒤에 설명을 붙이지 마십시오.
 위의 위험 분석 결과를 참고하여 현재 민원의 표현을 수정하십시오.
 단, 위험 분석 결과보다 현재 민원 원문을 우선하여 판단하십시오.
 """
+
+        # ========================================================
+    # 교사용 답변 초안 Prompt
+    # ========================================================
+
+    def _build_response_draft_prompt(
+        self,
+        content: str,
+        context: ContextAnalysisResult,
+        documents: list[dict],
+    ) -> str:
+
+        context_json = json.dumps(
+            context.model_dump(),
+            ensure_ascii=False,
+            indent=2,
+        )
+
+        document_blocks = []
+
+        for index, document in enumerate(
+            documents,
+            start=1,
+        ):
+            document_blocks.append(
+                f"""
+[참고자료 {index}]
+
+출처:
+{document.get("source", "알 수 없음")}
+
+페이지:
+{document.get("page")}
+
+내용:
+{document.get("content", "")}
+""".strip()
+            )
+
+        documents_text = "\n\n".join(
+            document_blocks
+        )
+
+        return f"""
+당신은 학교 교사가 학부모 민원에 답변할 때 사용할
+답변 초안을 작성하는 AI입니다.
+
+아래 대화 내용과 문맥 분석 결과,
+그리고 검색된 참고자료를 바탕으로
+교사가 실제 학부모에게 전달할 수 있는
+답변 초안을 작성하십시오.
+
+==================================================
+[민원 및 대화 내용]
+==================================================
+
+{content}
+
+==================================================
+[문맥 분석 결과]
+==================================================
+
+{context_json}
+
+==================================================
+[관련 참고자료]
+==================================================
+
+{documents_text}
+
+==================================================
+[작성 원칙]
+==================================================
+
+1. 학부모의 핵심 질문과 요청에 직접 답하십시오.
+
+2. 민원의 사실관계를 임의로 추가하거나 변경하지 마십시오.
+
+3. 학부모의 감정이나 문제 제기를 무시하지 말고,
+   정중하고 차분한 어조를 사용하십시오.
+
+4. 교사가 실제 학부모에게 전달할 수 있는
+   자연스럽고 구체적인 문장으로 작성하십시오.
+
+5. 확인되지 않은 사실을 확정적으로 말하지 마십시오.
+
+6. 검색된 참고자료와 관련이 없는 법령,
+   규정 또는 절차를 임의로 만들어내지 마십시오.
+
+7. 참고자료가 현재 민원과 직접 관련되지 않는다면
+   억지로 답변에 포함하지 마십시오.
+
+8. 법률적 판단이나 학교의 최종 처분을
+   임의로 확정하지 마십시오.
+
+9. 필요한 경우
+   "확인 후 안내드리겠습니다",
+   "관련 기준을 확인하겠습니다"처럼
+   확인이 필요한 사항임을 명확하게 표현하십시오.
+
+10. 지나치게 장황하지 않게 작성하되,
+    학부모가 다음 조치나 답변 내용을 이해할 수 있을 정도의
+    정보를 포함하십시오.
+
+11. 제목, 마크다운, JSON을 사용하지 마십시오.
+
+12. 최종 답변 본문만 출력하십시오.
+
+==================================================
+[최종 작업]
+==================================================
+
+위 정보를 바탕으로
+교사용 학부모 민원 답변 초안을 작성하십시오.
+""".strip()
 
     # ========================================================
     # RiskTagCode 검증

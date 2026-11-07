@@ -17,6 +17,7 @@ from app.schemas.ai import (
     ContextAnalysisResult,
     LlmAnalysisMetadata,
     LlmRiskAnalysisResult,
+    RiskTagResult,
 )
 
 from app.schemas.revision import (
@@ -75,13 +76,17 @@ class AiService:
             model="gemini-3.5-flash-lite"
         )
 
-    # ========================================================
+        # ========================================================
     # Backend /api/v1/ai/analyze
+    #
+    # Backend Rule 기반 1차 탐지 결과를 참고하여
+    # Claude가 민원 문맥 기반 2차 위험 분석을 수행한다.
     # ========================================================
 
     def analyze(
         self,
         complaint: str,
+        rule_results: list[RiskTagResult],
     ) -> LlmRiskAnalysisResult:
 
         # ----------------------------------------------------
@@ -94,16 +99,28 @@ class AiService:
         )
 
         # ----------------------------------------------------
-        # 2. 위험 요소 분석 프롬프트
+        # 2. Rule 탐지 결과 직렬화
+        # ----------------------------------------------------
+
+        rule_results_data = [
+            result.model_dump(
+                exclude_none=True
+            )
+            for result in rule_results
+        ]
+
+        # ----------------------------------------------------
+        # 3. 위험 요소 2차 분석 프롬프트
         # ----------------------------------------------------
 
         prompt = build_prompt(
             complaint=complaint,
             documents=documents,
+            rule_results=rule_results_data,
         )
 
         # ----------------------------------------------------
-        # 3. Claude 호출
+        # 4. Claude 호출
         # ----------------------------------------------------
 
         response = self.risk_llm_client.generate(
@@ -111,7 +128,7 @@ class AiService:
         )
 
         # ----------------------------------------------------
-        # 4. JSON 파싱
+        # 5. JSON 파싱
         # ----------------------------------------------------
 
         risk_data = self._parse_json_response(
@@ -123,7 +140,7 @@ class AiService:
         )
 
         # ----------------------------------------------------
-        # 5. RiskTagCode 검증
+        # 6. RiskTagCode 검증
         # ----------------------------------------------------
 
         self._validate_risk_tags(
@@ -131,7 +148,7 @@ class AiService:
         )
 
         # ----------------------------------------------------
-        # 6. Backend 계약에 맞는 결과 생성
+        # 7. Backend 계약에 맞는 결과 생성
         # ----------------------------------------------------
 
         return LlmRiskAnalysisResult.model_validate(

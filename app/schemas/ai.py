@@ -43,6 +43,9 @@ class EvidenceSpan(BaseModel):
 
 # ============================================================
 # Backend RiskTagDetectionResult 대응
+#
+# Rule 탐지 결과 입력과
+# LLM 위험 요소 분석 결과 모두 동일한 구조를 사용한다.
 # ============================================================
 
 class RiskTagResult(BaseModel):
@@ -53,6 +56,31 @@ class RiskTagResult(BaseModel):
         default_factory=list
     )
     reason: str | None = None
+
+
+# ============================================================
+# Backend -> AI 위험 요소 분석 요청
+#
+# complaint:
+#   개인정보 마스킹이 적용된 민원 내용
+#
+# ruleResults:
+#   Backend Rule 기반 1차 탐지 결과
+#
+# Claude는 Rule 결과를 참고하되 그대로 복사하지 않고,
+# 전체 문맥을 바탕으로 Rule 미탐지 / 오탐 가능성을
+# 2차로 보완 분석한다.
+#
+# Rule 구현이 완료되지 않았거나
+# AI 단독 테스트를 수행하는 경우에도 사용할 수 있도록
+# ruleResults의 기본값은 빈 배열로 둔다.
+# ============================================================
+
+class AiAnalyzeRequest(BaseModel):
+    complaint: str
+    ruleResults: list[RiskTagResult] = Field(
+        default_factory=list
+    )
 
 
 # ============================================================
@@ -116,13 +144,16 @@ class ContextAnalysisResult(BaseModel):
     ] = Field(default_factory=list)
 
     confidence: float
+
     evidenceSpans: list[EvidenceSpan] = Field(
         default_factory=list
     )
+
     reason: str
 
     historyRequired: bool = False
     boundaryCase: bool = False
+
     obfuscationType: Literal[
         "NONE",
         "MASKING",
@@ -142,8 +173,11 @@ class ContextAnalysisResult(BaseModel):
 
 class InternalAnalysisResult(BaseModel):
     context: ContextAnalysisResult
+
     tags: list[RiskTagResult] = Field(
         default_factory=list
     )
+
     softenedSummary: str | None = None
+
     metadata: LlmAnalysisMetadata

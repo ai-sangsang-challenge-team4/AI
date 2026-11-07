@@ -1,7 +1,9 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
 
-from app.schemas.ai import LlmRiskAnalysisResult
+from app.schemas.ai import (
+    AiAnalyzeRequest,
+    LlmRiskAnalysisResult,
+)
 from app.schemas.revision import (
     RevisionRequest,
     RevisionResult,
@@ -23,28 +25,30 @@ router = APIRouter(
 ai_service = AiService()
 
 
-class AiAnalyzeRequest(BaseModel):
-    complaint: str
-
-
 # ============================================================
-# 위험 요소 분석
+# 위험 요소 2차 분석
+#
+# Backend Rule 기반 1차 탐지 결과를 참고하여
+# Claude가 민원 전체 문맥을 기준으로 위험 요소를
+# 2차로 보완 분석한다.
 # ============================================================
 
 @router.post(
     "/analyze",
     response_model=LlmRiskAnalysisResult,
-    summary="학부모 민원 위험 요소 분석",
+    summary="학부모 민원 위험 요소 2차 분석",
     description=(
-        "학부모 민원 내용을 분석하여 위험 태그, 근거 문구, "
-        "신뢰도 및 분석 메타데이터를 반환합니다."
+        "Rule 기반 1차 위험 탐지 결과와 학부모 민원 내용을 함께 분석하여 "
+        "Rule에서 놓친 위험 요소 또는 문맥상 오탐 가능성이 있는 요소를 "
+        "LLM이 2차로 보완 판정합니다."
     ),
 )
 def analyze(
     request: AiAnalyzeRequest,
 ):
     return ai_service.analyze(
-        request.complaint
+        complaint=request.complaint,
+        rule_results=request.ruleResults,
     )
 
 

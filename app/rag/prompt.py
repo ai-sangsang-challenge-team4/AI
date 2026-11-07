@@ -250,11 +250,7 @@ def build_prompt(
       ],
       "reason": "Rule 결과와 민원 전체 문맥을 함께 검토한 판단 이유"
     }}
-  ],
-  "metadata": {{
-    "modelName": "사용한 모델 이름",
-    "temperature": 0.0
-  }}
+  ]
 }}
 
 반드시 유효한 JSON만 반환한다.

@@ -566,7 +566,7 @@ def main() -> int:
     print(f"AI 서버: {args.base_url.rstrip('/')}{ANALYZE_PATH}")
     print(
         "평가 모드: Claude 단독 프롬프트 평가 "
-        "(ruleResults=[], REPEAT 제외)\\n"
+        "(ruleResults=[], REPEAT 제외)\n"
     )
 
     result_rows: list[dict[str, Any]] = []

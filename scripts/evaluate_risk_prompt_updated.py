@@ -371,6 +371,8 @@ def write_csv(
 
 def build_tag_metrics(
     rows: list[dict[str, Any]],
+    *,
+    review_required: str | None = None,
 ) -> list[dict[str, Any]]:
     metrics = []
 
@@ -380,6 +382,10 @@ def build_tag_metrics(
             for row in rows
             if row["code"] == code
             and row["request_success"] == 1
+            and (
+                review_required is None
+                or row.get("review_required") == review_required
+            )
         ]
 
         gold_states = [row["gold_state"] for row in tag_rows]
@@ -435,10 +441,12 @@ def build_tag_metrics(
 
 def print_metrics(
     metrics: list[dict[str, Any]],
+    *,
+    title: str,
 ) -> None:
     print()
     print("========================================")
-    print("태그별 평가 결과")
+    print(title)
     print("========================================")
 
     header = (
@@ -566,8 +574,9 @@ def main() -> int:
     print(f"AI 서버: {args.base_url.rstrip('/')}{ANALYZE_PATH}")
     print(
         "평가 모드: Claude 단독 프롬프트 평가 "
-        "(ruleResults=[], REPEAT 제외)\n"
+        "(ruleResults=[], REPEAT 제외)"
     )
+    print()
 
     result_rows: list[dict[str, Any]] = []
     case_rows: list[dict[str, Any]] = []
@@ -749,6 +758,7 @@ def main() -> int:
         if row.get("evaluation_in_scope") == 1
     ]
 
+    # 전체 Silver Set 평가
     mismatches = [
         row
         for row in evaluated_rows
@@ -757,17 +767,72 @@ def main() -> int:
 
     metrics = build_tag_metrics(result_rows)
 
-    successful_cases = sum(
-        1
+    # 핵심 평가:
+    # review_required=NO인 안정 라벨만 대상으로 한다.
+    core_rows = [
+        row
+        for row in evaluated_rows
+        if row.get("review_required") == "NO"
+    ]
+
+    core_mismatches = [
+        row
+        for row in core_rows
+        if row["state_match"] == 0
+    ]
+
+    core_metrics = build_tag_metrics(
+        result_rows,
+        review_required="NO",
+    )
+
+    # 사람 검토 대상
+    review_rows = [
+        row
+        for row in evaluated_rows
+        if row.get("review_required") == "YES"
+    ]
+
+    review_mismatches = [
+        row
+        for row in review_rows
+        if row["state_match"] == 0
+    ]
+
+    successful_case_ids = {
+        row["case_id"]
         for row in case_rows
         if row["request_success"] == 1
-    )
+    }
+
+    review_case_ids = {
+        row["case_id"]
+        for row in review_rows
+    }
+
+    # 평가 대상 7개 태그 모두 review_required=NO인 사례
+    stable_case_ids = successful_case_ids - review_case_ids
+
+    successful_cases = len(successful_case_ids)
 
     perfect_cases = sum(
         1
         for row in case_rows
         if row["request_success"] == 1
         and row["all_evaluated_states_match"] == 1
+    )
+
+    stable_case_rows = [
+        row
+        for row in case_rows
+        if row["request_success"] == 1
+        and row["case_id"] in stable_case_ids
+    ]
+
+    stable_perfect_cases = sum(
+        1
+        for row in stable_case_rows
+        if row["all_evaluated_states_match"] == 1
     )
 
     exact_matches = sum(
@@ -785,6 +850,21 @@ def main() -> int:
         len(metrics),
     )
 
+    core_exact_matches = sum(
+        row["state_match"]
+        for row in core_rows
+    )
+
+    core_exact_state_accuracy = safe_divide(
+        core_exact_matches,
+        len(core_rows),
+    )
+
+    core_macro_present_f1 = safe_divide(
+        sum(metric["present_f1"] for metric in core_metrics),
+        len(core_metrics),
+    )
+
     summary = {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "evaluation_mode": (
@@ -796,16 +876,45 @@ def main() -> int:
         "cases_failed": request_failures,
         "evaluated_codes": EVALUATED_CODES,
         "excluded_codes": ["REPEAT"],
-        "perfect_evaluated_tag_cases": perfect_cases,
-        "perfect_evaluated_tag_case_rate": round(
-            safe_divide(perfect_cases, successful_cases),
-            4,
-        ),
-        "total_tag_comparisons": len(evaluated_rows),
-        "exact_state_matches": exact_matches,
-        "exact_state_accuracy": round(exact_state_accuracy, 4),
-        "state_mismatches": len(mismatches),
-        "macro_present_f1": round(macro_present_f1, 4),
+        "silver": {
+            "perfect_evaluated_tag_cases": perfect_cases,
+            "perfect_evaluated_tag_case_rate": round(
+                safe_divide(perfect_cases, successful_cases),
+                4,
+            ),
+            "total_tag_comparisons": len(evaluated_rows),
+            "exact_state_matches": exact_matches,
+            "exact_state_accuracy": round(exact_state_accuracy, 4),
+            "state_mismatches": len(mismatches),
+            "macro_present_f1": round(macro_present_f1, 4),
+        },
+        "core_review_required_no": {
+            "stable_cases": len(stable_case_ids),
+            "stable_perfect_cases": stable_perfect_cases,
+            "stable_perfect_case_rate": round(
+                safe_divide(
+                    stable_perfect_cases,
+                    len(stable_case_ids),
+                ),
+                4,
+            ),
+            "total_tag_comparisons": len(core_rows),
+            "exact_state_matches": core_exact_matches,
+            "exact_state_accuracy": round(
+                core_exact_state_accuracy,
+                4,
+            ),
+            "state_mismatches": len(core_mismatches),
+            "macro_present_f1": round(
+                core_macro_present_f1,
+                4,
+            ),
+        },
+        "human_review": {
+            "review_cases": len(review_case_ids),
+            "review_tag_comparisons": len(review_rows),
+            "review_mismatches": len(review_mismatches),
+        },
         "average_latency_ms": round(
             safe_divide(total_latency_ms, successful_cases),
             2,
@@ -816,7 +925,9 @@ def main() -> int:
             "최종 Gold Set 성능으로 해석하면 안 됩니다. "
             "Rule 결과는 비워 두고 Claude 프롬프트 자체를 평가했습니다. "
             "REPEAT는 이력 의존 태그이므로 Claude 단독 평가 지표와 "
-            "mismatch 집계에서 제외했습니다."
+            "mismatch 집계에서 제외했습니다. "
+            "핵심 평가는 review_required=NO 라벨만 별도로 집계하며, "
+            "review_required=YES는 사람 검토 대상으로 분리합니다."
         ),
     }
 
@@ -825,7 +936,10 @@ def main() -> int:
     write_csv(report_dir / "results.csv", result_rows)
     write_csv(report_dir / "cases.csv", case_rows)
     write_csv(report_dir / "mismatches.csv", mismatches)
+    write_csv(report_dir / "core_mismatches.csv", core_mismatches)
+    write_csv(report_dir / "review_mismatches.csv", review_mismatches)
     write_csv(report_dir / "tag_metrics.csv", metrics)
+    write_csv(report_dir / "tag_metrics_core.csv", core_metrics)
 
     with (report_dir / "summary.json").open(
         "w",
@@ -838,20 +952,52 @@ def main() -> int:
             indent=2,
         )
 
-    print_metrics(metrics)
+    print_metrics(
+        metrics,
+        title="태그별 평가 결과 - 전체 Silver",
+    )
 
     print()
     print("========================================")
-    print("전체 요약")
+    print("전체 Silver 평가")
     print("========================================")
     print(f"성공 사례: {successful_cases}/{len(cases)}")
     print(
         f"평가 대상 {len(EVALUATED_CODES)}개 태그 전부 일치 사례: "
         f"{perfect_cases}/{successful_cases}"
     )
-    print(f"전체 state 정확도: {exact_state_accuracy:.3f}")
+    print(f"state 정확도: {exact_state_accuracy:.3f}")
     print(f"PRESENT macro F1: {macro_present_f1:.3f}")
     print(f"불일치 라벨 수: {len(mismatches)}")
+
+    print_metrics(
+        core_metrics,
+        title="태그별 평가 결과 - 핵심(review_required=NO)",
+    )
+
+    print()
+    print("========================================")
+    print("핵심 평가 (review_required=NO)")
+    print("========================================")
+    print(
+        f"안정 라벨 비교 수: "
+        f"{len(core_rows)}"
+    )
+    print(
+        f"7개 태그 모두 검토 불필요한 사례: "
+        f"{stable_perfect_cases}/{len(stable_case_ids)} 전부 일치"
+    )
+    print(f"state 정확도: {core_exact_state_accuracy:.3f}")
+    print(f"PRESENT macro F1: {core_macro_present_f1:.3f}")
+    print(f"불일치 라벨 수: {len(core_mismatches)}")
+
+    print()
+    print("========================================")
+    print("사람 검토 대상 (review_required=YES)")
+    print("========================================")
+    print(f"해당 사례 수: {len(review_case_ids)}")
+    print(f"해당 라벨 수: {len(review_rows)}")
+    print(f"불일치 라벨 수: {len(review_mismatches)}")
 
     if successful_cases:
         print(
@@ -863,7 +1009,10 @@ def main() -> int:
     print("결과 저장:")
     print(f"- {report_dir / 'summary.json'}")
     print(f"- {report_dir / 'tag_metrics.csv'}")
+    print(f"- {report_dir / 'tag_metrics_core.csv'}")
     print(f"- {report_dir / 'mismatches.csv'}")
+    print(f"- {report_dir / 'core_mismatches.csv'}")
+    print(f"- {report_dir / 'review_mismatches.csv'}")
     print(f"- {report_dir / 'results.csv'}")
     print(f"- {report_dir / 'cases.csv'}")
 

@@ -28,7 +28,8 @@ Rule의 미탐지와 오탐 가능성을 보완하는 것이다.
 
 중요:
 
-- 위험 요소 태그는 반드시 아래 RiskTagCode 중에서만 선택한다.
+- 위험 요소 태그는 반드시 아래 RiskTagCode 8종만 사용한다.
+- 8개 태그를 모두 정확히 한 번씩 반환한다.
 - 목록에 없는 새로운 태그 코드를 생성하지 않는다.
 - Rule 탐지 결과는 참고자료이며 정답으로 간주하지 않는다.
 - Rule이 ABSENT로 판단했더라도 문맥상 위험성이 존재하면 탐지할 수 있다.
@@ -41,8 +42,11 @@ Rule의 미탐지와 오탐 가능성을 보완하는 것이다.
 - evidenceSpans의 text는 반드시 현재 민원에 실제 존재하는 표현을 사용한다.
 - 검색 문서나 Rule 결과에 포함된 표현이 현재 민원에 없다면
   evidenceSpans에 사용하지 않는다.
+- PRESENT 또는 BOUNDARY인 경우에만 필요한 근거 표현을 evidenceSpans에 넣는다.
+- ABSENT 또는 UNKNOWN이면 evidenceSpans는 빈 배열로 반환한다.
 - 법률적 판단을 단정하지 않는다.
 - confidence는 0.0 이상 1.0 이하의 값으로 작성한다.
+- 판단 근거가 부족해 confidence를 부여하기 어려우면 null을 사용할 수 있다.
 - 반드시 유효한 JSON만 반환한다.
 
 
@@ -51,6 +55,10 @@ Rule의 미탐지와 오탐 가능성을 보완하는 것이다.
 PROFANITY
 - 일반적인 욕설, 비속어 또는 거친 감정 표현
 - 특정 개인의 인격이나 능력을 직접 공격하지 않는 표현
+- "열받다", "짜증난다"처럼 감정이 강하게 드러나는 표현도
+  상대방에게 공격적·거친 방식으로 전달되는 경우 포함할 수 있다
+- 단순히 자신의 감정을 설명하는 수준이라면
+  문맥에 따라 BOUNDARY 또는 ABSENT로 판단할 수 있다
 
 INSULT
 - 특정 교사 또는 개인의 인격, 능력, 자격 등을
@@ -59,12 +67,16 @@ INSULT
 THREAT
 - 신체적 또는 사회적 위해나 보복을 가하겠다는
   의사를 명시하거나 암시하는 표현
+- 정당한 절차 이용 의사나 단순한 문제 제기만으로
+  THREAT를 부여하지 않는다
 
 LEGAL
 - 교육청 민원, 신고, 진정, 소송 등
   법적·행정적 절차를 압박 수단으로 언급하는 표현
-- 정당한 절차에 대한 단순 문의나 안내 요청은
+- 정당한 절차에 대한 단순 문의, 자료 요청, 안내 요청은
   위험 요소로 판단하지 않는다
+- 절차 이용 가능성을 말하더라도 상대방의 행동을 바꾸기 위한
+  조건부 압박인지 전체 문맥을 확인한다
 
 EXPOSURE
 - 언론, SNS, 커뮤니티 등에 특정 개인이나
@@ -75,17 +87,27 @@ EXPOSURE
 REPEAT
 - 동일 민원인이 동일하거나 유사한 요구를
   반복적으로 제기하는 상황
-- 현재 민원 내용만으로 반복성을 판단하지 않는다
-- 실제 과거 민원 또는 처리 이력이 제공된 경우에만 판단한다
+- 현재 민원 문장만으로 반복성을 판단하지 않는다
+- 실제 과거 민원 또는 처리 이력이 입력으로 제공된 경우에만
+  PRESENT 또는 ABSENT를 판단할 수 있다
+- 현재 분석 입력에 과거 민원 또는 처리 이력이 제공되지 않았다면
+  반드시 UNKNOWN으로 판단한다
+- "계속", "다시", "또" 같은 단어만으로 반복 민원이라고 판단하지 않는다
 
 UNFAIR_REQUEST
 - 학교 규정, 통상적인 업무 권한,
   학생 간 형평성 또는 적법한 절차를 벗어난
   조치를 요구하는 표현
+- 단순히 빠른 확인이나 답변 기한을 요청하는 것만으로
+  부당 요구라고 판단하지 않는다
+- 특혜, 기록 조작, 규정 예외, 다른 학생과의 형평성 침해 등
+  구체적인 부당성이 확인되는지를 우선한다
 
 PRIVACY
 - 개인 식별 정보 또는 제3자의 개인정보를 요구하는 표현
 - 개인정보를 공개하거나 압박 수단으로 이용하려는 표현
+- 민원에 단순히 개인정보가 포함되어 있다는 이유만으로
+  PRIVACY 위험을 부여하지 않는다
 """
 
 
@@ -207,17 +229,29 @@ def build_prompt(
 
 10. 확신하기 어려운 경우에는
     PRESENT로 억지 판단하지 말고
-    BOUNDARY 또는 UNKNOWN을 사용할 수 있다.
+    BOUNDARY 또는 UNKNOWN을 사용한다.
+
+11. 8개의 RiskTagCode를 모두 반환한다.
+    어떤 태그도 생략하지 않는다.
+
+12. 각 RiskTagCode는 정확히 한 번만 반환한다.
+
+13. ABSENT 또는 UNKNOWN 태그는
+    evidenceSpans를 빈 배열로 반환한다.
+
+14. REPEAT는 현재 입력에 실제 과거 민원 또는 처리 이력이
+    제공되지 않은 경우 반드시 UNKNOWN으로 반환한다.
+    현재 민원 문장이나 Rule 키워드만으로 반복성을 확정하지 않는다.
 
 ========================================
 [위험 요소 태깅 작업]
 ========================================
 
-반드시 아래 RiskTagCode 중에서만 선택한다.
+아래 8개 RiskTagCode를 반드시 모두 반환한다.
 
 {", ".join(RISK_TAG_CODES)}
 
-각 탐지 결과에 대해 다음 정보를 반환한다.
+각 태그에 대해 다음 정보를 반환한다.
 
 - code
 - state
@@ -225,33 +259,114 @@ def build_prompt(
 - evidenceSpans
 - reason
 
-민원에서 위험 요소가 확인되지 않는 경우:
+state는 반드시 다음 중 하나다.
 
-"tags": []
+- PRESENT
+- ABSENT
+- BOUNDARY
+- UNKNOWN
 
-로 반환한다.
+반환 순서는 다음 순서를 유지한다.
+
+1. PROFANITY
+2. INSULT
+3. THREAT
+4. LEGAL
+5. EXPOSURE
+6. REPEAT
+7. UNFAIR_REQUEST
+8. PRIVACY
+
+========================================
+[상태별 작성 기준]
+========================================
+
+PRESENT
+- 현재 민원 문맥에서 해당 위험 요소가 명확히 존재한다.
+- evidenceSpans에 실제 근거 표현을 넣는다.
+
+BOUNDARY
+- 위험 요소 가능성은 있으나 문맥상 확정하기 어렵다.
+- 판단 근거가 되는 실제 표현이 있다면 evidenceSpans에 넣는다.
+
+ABSENT
+- 현재 민원 문맥에서 해당 위험 요소가 확인되지 않는다.
+- evidenceSpans는 []로 반환한다.
+
+UNKNOWN
+- 현재 입력만으로 해당 위험 요소를 판단할 정보가 부족하다.
+- evidenceSpans는 []로 반환한다.
+- 특히 REPEAT는 과거 민원 또는 처리 이력이 제공되지 않으면 UNKNOWN이다.
 
 ========================================
 [최종 JSON]
 ========================================
 
+반드시 아래 구조처럼 tags 배열에 8개 태그를 모두 포함한다.
+
 {{
   "tags": [
     {{
+      "code": "PROFANITY",
+      "state": "ABSENT",
+      "confidence": null,
+      "evidenceSpans": [],
+      "reason": "욕설, 비속어 또는 거친 감정 표현이 확인되지 않음"
+    }},
+    {{
       "code": "INSULT",
-      "state": "PRESENT",
-      "confidence": 0.0,
-      "evidenceSpans": [
-        {{
-          "text": "현재 민원에 실제 존재하는 근거 표현",
-          "start": null,
-          "end": null
-        }}
-      ],
-      "reason": "Rule 결과와 민원 전체 문맥을 함께 검토한 판단 이유"
+      "state": "ABSENT",
+      "confidence": null,
+      "evidenceSpans": [],
+      "reason": "특정 개인에 대한 직접적인 인격 공격이 확인되지 않음"
+    }},
+    {{
+      "code": "THREAT",
+      "state": "ABSENT",
+      "confidence": null,
+      "evidenceSpans": [],
+      "reason": "위해 또는 보복 의사가 확인되지 않음"
+    }},
+    {{
+      "code": "LEGAL",
+      "state": "ABSENT",
+      "confidence": null,
+      "evidenceSpans": [],
+      "reason": "법적·행정적 절차를 압박 수단으로 사용한 표현이 확인되지 않음"
+    }},
+    {{
+      "code": "EXPOSURE",
+      "state": "ABSENT",
+      "confidence": null,
+      "evidenceSpans": [],
+      "reason": "공개 또는 유포를 압박 수단으로 사용한 표현이 확인되지 않음"
+    }},
+    {{
+      "code": "REPEAT",
+      "state": "UNKNOWN",
+      "confidence": null,
+      "evidenceSpans": [],
+      "reason": "과거 민원 또는 처리 이력이 제공되지 않아 반복성을 판단할 수 없음"
+    }},
+    {{
+      "code": "UNFAIR_REQUEST",
+      "state": "ABSENT",
+      "confidence": null,
+      "evidenceSpans": [],
+      "reason": "규정이나 형평성을 벗어난 요구가 확인되지 않음"
+    }},
+    {{
+      "code": "PRIVACY",
+      "state": "ABSENT",
+      "confidence": null,
+      "evidenceSpans": [],
+      "reason": "개인정보 요구, 공개 또는 악용 위험이 확인되지 않음"
     }}
   ]
 }}
+
+PRESENT 또는 BOUNDARY인 태그는 위 예시의 ABSENT 상태를 그대로 복사하지 말고,
+현재 민원의 실제 문맥에 따라 state, confidence, evidenceSpans, reason을 작성한다.
 
 반드시 유효한 JSON만 반환한다.
 JSON 앞뒤에 설명을 붙이지 않는다.
@@ -413,6 +528,7 @@ days_since_first_contact: {days_since_first_contact}
   "obfuscationType": "NONE"
 }}
 """.strip()
+
 
 def build_revision_prompt(
     complaint: str,

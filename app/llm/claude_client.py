@@ -30,7 +30,7 @@ class ClaudeLlmClient(LlmClient):
 
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=2048,
+            max_tokens=4096,
             messages=[
                 {
                     "role": "user",

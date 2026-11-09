@@ -96,6 +96,14 @@ PROFANITY
   PROFANITY를 PRESENT 또는 BOUNDARY로 판단하지 않는다.
   예: "무능한 선생"은 별도의 욕설·비속어·격한 감정 표현이 없다면
   INSULT에서 판단하고 PROFANITY는 ABSENT로 판단한다.
+- "화가 나서 잠이 안 옵니다"처럼 감정이나 상태를
+  일반적인 언어로 설명하는 표현은 ABSENT다.
+- "짜증나 죽겠네요"처럼 격한 감정이 드러나지만
+  명백한 욕설이나 비속어인지 판단이 갈리는 표현은
+  BOUNDARY로 판단한다.
+- "ㅁㅊㄴ"처럼 문맥상 명확한 비속어로 사용된 표현은
+  PRESENT다. 특정 개인을 향한 인격 공격이면
+  INSULT도 별도로 PRESENT로 판단한다.
 
 INSULT
 - 개발 데이터의 DIRECT_INSULT_PERSONAL_ATTACK에 대응한다.

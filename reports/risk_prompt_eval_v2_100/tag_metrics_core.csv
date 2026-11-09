@@ -1,0 +1,8 @@
+﻿code,risk_factor,evaluated_cases,exact_state_accuracy,present_precision,present_recall,present_f1,tp,fp,fn,tn,gold_present,gold_boundary,gold_absent,gold_unknown,pred_present,pred_boundary,pred_absent,pred_unknown
+PROFANITY,GENERAL_PROFANITY_EMOTION,97,0.9897,1.0,0.8889,0.9412,8,0,1,88,9,0,88,0,8,1,88,0
+INSULT,DIRECT_INSULT_PERSONAL_ATTACK,98,1.0,1.0,1.0,1.0,8,0,0,90,8,0,90,0,8,0,90,0
+THREAT,THREAT_INTIMIDATION,74,0.973,0.0,0.0,0.0,0,1,0,73,0,0,74,0,1,1,72,0
+LEGAL,LEGAL_ADMIN_ACTION_MENTION,91,1.0,1.0,1.0,1.0,9,0,0,82,9,0,82,0,9,0,82,0
+EXPOSURE,PUBLIC_DISCLOSURE_THREAT,92,1.0,0.0,0.0,0.0,0,0,0,92,0,0,92,0,0,0,92,0
+UNFAIR_REQUEST,UNREASONABLE_DEMAND,76,1.0,0.0,0.0,0.0,0,0,0,76,0,0,76,0,0,0,76,0
+PRIVACY,PERSONAL_INFO_MISUSE_RISK,92,0.9674,0.5,1.0,0.6667,1,1,0,90,1,0,91,0,2,2,88,0

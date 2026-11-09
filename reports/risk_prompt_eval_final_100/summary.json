@@ -1,0 +1,49 @@
+{
+  "generated_at": "2026-11-09T21:17:13",
+  "evaluation_mode": "claude_prompt_only_rule_results_empty_repeat_excluded",
+  "base_url": "http://localhost:8000",
+  "cases_requested": 100,
+  "cases_succeeded": 80,
+  "cases_failed": 20,
+  "evaluated_codes": [
+    "PROFANITY",
+    "INSULT",
+    "THREAT",
+    "LEGAL",
+    "EXPOSURE",
+    "UNFAIR_REQUEST",
+    "PRIVACY"
+  ],
+  "excluded_codes": [
+    "REPEAT"
+  ],
+  "silver": {
+    "perfect_evaluated_tag_cases": 60,
+    "perfect_evaluated_tag_case_rate": 0.75,
+    "total_tag_comparisons": 560,
+    "exact_state_matches": 537,
+    "exact_state_accuracy": 0.9589,
+    "state_mismatches": 23,
+    "macro_present_f1": 0.9031
+  },
+  "core_review_required_no": {
+    "stable_cases": 43,
+    "stable_perfect_cases": 40,
+    "stable_perfect_case_rate": 0.9302,
+    "total_tag_comparisons": 495,
+    "exact_state_matches": 489,
+    "exact_state_accuracy": 0.9879,
+    "state_mismatches": 6,
+    "macro_present_f1": 0.5033
+  },
+  "human_review": {
+    "review_cases": 37,
+    "review_tag_comparisons": 65,
+    "review_mismatches": 17
+  },
+  "average_latency_ms": 7773.53,
+  "model_names": {
+    "claude-sonnet-5-5": 80
+  },
+  "note": "현재 개발 라벨은 AI_DRAFT/AI_PROPOSED 기반 Silver Set입니다. 최종 Gold Set 성능으로 해석하면 안 됩니다. Rule 결과는 비워 두고 Claude 프롬프트 자체를 평가했습니다. REPEAT는 이력 의존 태그이므로 Claude 단독 평가 지표와 mismatch 집계에서 제외했습니다. 핵심 평가는 review_required=NO 라벨만 별도로 집계하며, review_required=YES는 사람 검토 대상으로 분리합니다."
+}

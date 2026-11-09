@@ -140,7 +140,19 @@ class AiService:
         )
 
         # ----------------------------------------------------
-        # 6. RiskTagCode 검증
+        # 6. LLM 응답 형식 정규화
+        #
+        # Claude가 evidenceSpans를 객체 배열 대신
+        # 문자열 배열로 반환하는 경우에도 Backend 계약에 맞게
+        # EvidenceSpan 객체 형태로 변환한다.
+        # ----------------------------------------------------
+
+        risk_data = self._normalize_risk_tag_response(
+            risk_data
+        )
+
+        # ----------------------------------------------------
+        # 7. RiskTagCode 검증
         # ----------------------------------------------------
 
         self._validate_risk_tags(
@@ -148,7 +160,7 @@ class AiService:
         )
 
         # ----------------------------------------------------
-        # 7. Backend 계약에 맞는 결과 생성
+        # 8. Backend 계약에 맞는 결과 생성
         # ----------------------------------------------------
 
         return LlmRiskAnalysisResult.model_validate(
@@ -622,6 +634,143 @@ JSON 앞뒤에 설명을 붙이지 마십시오.
 위 정보를 바탕으로
 교사용 학부모 민원 답변 초안을 작성하십시오.
 """.strip()
+
+    # ========================================================
+    # 위험 분석 LLM 응답 정규화
+    # ========================================================
+
+    def _normalize_risk_tag_response(
+        self,
+        data: dict,
+    ) -> dict:
+
+        tags = data.get(
+            "tags",
+            [],
+        )
+
+        if not isinstance(tags, list):
+            return data
+
+        normalized_tags = []
+
+        for tag in tags:
+
+            if not isinstance(tag, dict):
+                continue
+
+            normalized_tag = dict(tag)
+
+            evidence_spans = normalized_tag.get(
+                "evidenceSpans",
+                [],
+            )
+
+            normalized_spans = []
+
+            # ------------------------------------------------
+            # 정상 형태:
+            #
+            # "evidenceSpans": [
+            #   {
+            #     "text": "...",
+            #     "start": null,
+            #     "end": null
+            #   }
+            # ]
+            #
+            # 비정상 형태:
+            #
+            # "evidenceSpans": [
+            #   "근거 문장"
+            # ]
+            #
+            # 두 형태를 모두 Backend 계약에 맞게 정규화한다.
+            # ------------------------------------------------
+
+            if isinstance(
+                evidence_spans,
+                list,
+            ):
+
+                for span in evidence_spans:
+
+                    if isinstance(
+                        span,
+                        str,
+                    ):
+
+                        span_text = span.strip()
+
+                        if span_text:
+                            normalized_spans.append(
+                                {
+                                    "text": span_text,
+                                    "start": None,
+                                    "end": None,
+                                }
+                            )
+
+                    elif isinstance(
+                        span,
+                        dict,
+                    ):
+
+                        span_text = str(
+                            span.get(
+                                "text",
+                                "",
+                            )
+                        ).strip()
+
+                        if span_text:
+                            normalized_spans.append(
+                                {
+                                    "text": span_text,
+                                    "start": span.get(
+                                        "start"
+                                    ),
+                                    "end": span.get(
+                                        "end"
+                                    ),
+                                }
+                            )
+
+            elif isinstance(
+                evidence_spans,
+                str,
+            ):
+
+                span_text = (
+                    evidence_spans.strip()
+                )
+
+                if span_text:
+                    normalized_spans.append(
+                        {
+                            "text": span_text,
+                            "start": None,
+                            "end": None,
+                        }
+                    )
+
+            normalized_tag[
+                "evidenceSpans"
+            ] = normalized_spans
+
+            normalized_tags.append(
+                normalized_tag
+            )
+
+        normalized_data = dict(
+            data
+        )
+
+        normalized_data[
+            "tags"
+        ] = normalized_tags
+
+        return normalized_data
 
     # ========================================================
     # RiskTagCode 검증

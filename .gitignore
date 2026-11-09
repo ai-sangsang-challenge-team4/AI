@@ -28,4 +28,4 @@ data/private/
 .env
 data/vectorstore/
 benchmark/results/
-data/dev
+reports/

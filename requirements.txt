@@ -6,9 +6,9 @@ openai
 langchain
 langchain-community
 langchain-openai
-faiss-cpu
 pypdf
 langchain-text-splitters
 chromadb
 langchain-chroma
 anthropic==0.117.0
+langchain-huggingface

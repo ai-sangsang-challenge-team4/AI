@@ -2,11 +2,10 @@
 from pathlib import Path
 
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
+from app.rag.cloudflare_embeddings import CloudflareBgeM3Embeddings
 
 
 VECTORSTORE_DIR = Path("data/vectorstore")
-EMBEDDING_MODEL = "BAAI/bge-m3"
 
 DEFAULT_SCORE_THRESHOLD = 0.35
 DEFAULT_MAX_RESULTS = 3
@@ -23,15 +22,9 @@ class RagRetriever:
         score_threshold: float = DEFAULT_SCORE_THRESHOLD,
         search_k: int = DEFAULT_SEARCH_K,
     ):
-        embeddings = HuggingFaceEmbeddings(
-            model_name=EMBEDDING_MODEL,
-            model_kwargs={
-                "device": "cpu",
-            },
-            encode_kwargs={
-                "normalize_embeddings": True,
-            },
-        )
+        # Cloudflare Workers AI의 BGE-M3 임베딩 API 사용
+        # EC2에서 임베딩 모델을 직접 로딩하지 않음
+        embeddings = CloudflareBgeM3Embeddings()
 
         self.vectorstore = Chroma(
             collection_name="teacherhub_rag",

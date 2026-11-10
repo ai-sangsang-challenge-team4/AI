@@ -3,6 +3,8 @@ uvicorn
 python-dotenv
 pydantic
 openai
+google-genai
+anthropic==0.117.0
 langchain
 langchain-community
 langchain-openai
@@ -10,5 +12,4 @@ pypdf
 langchain-text-splitters
 chromadb
 langchain-chroma
-anthropic==0.117.0
-langchain-huggingface
+requests

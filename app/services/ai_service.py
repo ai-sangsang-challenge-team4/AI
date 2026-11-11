@@ -158,6 +158,7 @@ class AiService:
         self._validate_risk_tags(
             risk_data
         )
+        self._validate_risk_severity(risk_data)
 
         # ----------------------------------------------------
         # 8. Backend 계약에 맞는 결과 생성
@@ -776,6 +777,80 @@ JSON 앞뒤에 설명을 붙이지 마십시오.
     # ========================================================
     # RiskTagCode 검증
     # ========================================================
+
+    def _validate_risk_severity(self, data: dict) -> None:
+        """Claude 위험 분석 결과의 심각도와 안전 신호 검증."""
+
+        tags = data.get("tags", [])
+
+        expected_codes = set(RISK_TAG_CODES)
+        actual_codes = [
+            tag["code"] for tag in tags
+        ]
+
+        if (
+            len(actual_codes) != len(expected_codes)
+            or set(actual_codes) != expected_codes
+        ):
+            raise ValueError(
+                "위험 분석 결과는 중복 없는 8개 태그를 포함해야 합니다."
+            )
+
+        for tag in tags:
+            code = tag["code"]
+            state = tag.get("state")
+
+            if "severity" not in tag or "repeatCount" not in tag:
+                raise ValueError(
+                    f"{code}: severity 또는 repeatCount 누락"
+                )
+
+            severity = tag["severity"]
+            count = tag["repeatCount"]
+
+            if state == "PRESENT":
+                valid = (
+                    type(severity) is int
+                    and 1 <= severity <= 3
+                    and type(count) is int
+                    and count >= 1
+                )
+            elif state == "ABSENT":
+                valid = severity == 0 and count == 0
+            elif state in ("BOUNDARY", "UNKNOWN"):
+                valid = severity is None and count is None
+            else:
+                valid = False
+
+            if not valid:
+                raise ValueError(
+                    f"{code}: state={state}, "
+                    f"severity={severity}, repeatCount={count} "
+                    "조합이 올바르지 않습니다."
+                )
+
+        flags = data.get("safetyFlags")
+
+        if not isinstance(flags, dict):
+            raise ValueError("safetyFlags는 객체여야 합니다.")
+
+        required = {
+            "credibleThreat",
+            "studentSafetyConcern",
+            "privacyExposure",
+        }
+
+        if set(flags) != required:
+            raise ValueError(
+                "safetyFlags에 필수 항목이 누락되었거나 "
+                "알 수 없는 항목이 있습니다."
+            )
+
+        for key, value in flags.items():
+            if value is not None and type(value) is not bool:
+                raise ValueError(
+                    f"safetyFlags.{key}: bool 또는 null이어야 합니다."
+                )
 
     def _validate_risk_tags(
         self,

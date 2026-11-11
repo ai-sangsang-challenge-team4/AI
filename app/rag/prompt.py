@@ -449,6 +449,8 @@ UNKNOWN
       "code": "PROFANITY",
       "state": "ABSENT",
       "confidence": null,
+      "severity": 0,
+      "repeatCount": 0,
       "evidenceSpans": [],
       "reason": "욕설, 비속어 또는 거친 감정 표현이 확인되지 않음"
     }},
@@ -456,6 +458,8 @@ UNKNOWN
       "code": "INSULT",
       "state": "ABSENT",
       "confidence": null,
+      "severity": 0,
+      "repeatCount": 0,
       "evidenceSpans": [],
       "reason": "특정 개인에 대한 직접적인 인격 공격이 확인되지 않음"
     }},
@@ -463,6 +467,8 @@ UNKNOWN
       "code": "THREAT",
       "state": "ABSENT",
       "confidence": null,
+      "severity": 0,
+      "repeatCount": 0,
       "evidenceSpans": [],
       "reason": "위해 또는 보복 의사가 확인되지 않음"
     }},
@@ -470,6 +476,8 @@ UNKNOWN
       "code": "LEGAL",
       "state": "ABSENT",
       "confidence": null,
+      "severity": 0,
+      "repeatCount": 0,
       "evidenceSpans": [],
       "reason": "법적·행정적 공식 절차 언급이 확인되지 않음"
     }},
@@ -477,6 +485,8 @@ UNKNOWN
       "code": "EXPOSURE",
       "state": "ABSENT",
       "confidence": null,
+      "severity": 0,
+      "repeatCount": 0,
       "evidenceSpans": [],
       "reason": "공개 또는 유포를 압박 수단으로 사용한 표현이 확인되지 않음"
     }},
@@ -484,6 +494,8 @@ UNKNOWN
       "code": "REPEAT",
       "state": "UNKNOWN",
       "confidence": null,
+      "severity": null,
+      "repeatCount": null,
       "evidenceSpans": [],
       "reason": "과거 민원 또는 처리 이력이 제공되지 않아 반복성을 판단할 수 없음"
     }},
@@ -491,6 +503,8 @@ UNKNOWN
       "code": "UNFAIR_REQUEST",
       "state": "ABSENT",
       "confidence": null,
+      "severity": 0,
+      "repeatCount": 0,
       "evidenceSpans": [],
       "reason": "규정이나 형평성을 벗어난 요구가 확인되지 않음"
     }},
@@ -498,10 +512,17 @@ UNKNOWN
       "code": "PRIVACY",
       "state": "ABSENT",
       "confidence": null,
+      "severity": 0,
+      "repeatCount": 0,
       "evidenceSpans": [],
       "reason": "개인식별정보 포함 또는 개인정보 요구·공개·악용에 해당하는 근거가 확인되지 않음"
     }}
-  ]
+  ],
+  "safetyFlags": {{
+    "credibleThreat": false,
+    "studentSafetyConcern": false,
+    "privacyExposure": false
+  }}
 }}
 
 PRESENT 또는 BOUNDARY인 태그는 위 예시의 ABSENT 상태를 그대로 복사하지 말고,
@@ -510,6 +531,75 @@ PRESENT 또는 BOUNDARY인 태그는 위 예시의 ABSENT 상태를 그대로 �
 반드시 유효한 JSON만 반환한다.
 JSON 앞뒤에 설명을 붙이지 않는다.
 마크다운 코드블록을 사용하지 않는다.
+
+========================================
+[추가 평가 기준: 심각도]
+========================================
+
+각 태그에 severity와 repeatCount를 반드시 포함한다.
+
+severity는 위험 표현의 문맥적 심각도이며
+confidence(판단 확신도)와 구분한다.
+
+상태별 severity:
+- PRESENT: 1, 2, 3 중 하나
+- ABSENT: 0
+- BOUNDARY: null
+- UNKNOWN: null
+
+PRESENT의 심각도 판단:
+1: 경미하거나 일회성인 낮은 강도의 위험 표현
+2: 직접적인 공격, 반복 또는 상당한 압박
+3: 고강도 공격, 구체적인 위해, 심각한 권리 침해
+
+단, 위 기준은 일반 원칙이며
+태그별 위험 유형과 전체 문맥을 함께 고려한다.
+한 번 등장한 표현이라도 중대하면 3이 될 수 있다.
+
+태그별 중점 판단:
+- PROFANITY: 욕설의 강도, 반복성, 직접 대상 여부
+- INSULT: 특정인에 대한 직접적인 인격 공격 정도
+- THREAT: 위해의 구체성, 대상, 신빙성
+- LEGAL: 정당한 권리 행사와 부당한 압박 구분
+- EXPOSURE: 공개 목적, 압박 여부, 개인정보 포함 여부
+- REPEAT: 제공된 과거 연락 이력과 과도한 반복 여부
+- UNFAIR_REQUEST: 권한 및 규정 위반 요구의 정도
+- PRIVACY: 개인정보의 민감도, 노출 및 유포 위험
+
+정당한 민원, 신고, 법적 대응 예고만으로
+심각도를 높이지 않는다.
+
+repeatCount:
+- 현재 민원 원문에서 확인된 해당 태그의 위험 표현 횟수
+- PRESENT라면 1 이상의 정수
+- ABSENT라면 0
+- BOUNDARY 또는 UNKNOWN이라면 null
+- 과거 연락 이력을 임의로 만들어 계산하지 않는다.
+- 동일 표현의 인용이나 문맥을 고려한다.
+- 반복 횟수만으로 severity를 자동 결정하지 않는다.
+
+========================================
+[추가 평가 기준: 안전 신호]
+========================================
+
+safetyFlags는 반드시 반환한다.
+
+- credibleThreat:
+  구체적이고 신빙성 있는 위해 위협이 확인된 경우 true
+
+- studentSafetyConcern:
+  학생 안전에 대한 구체적인 위험 신호가 확인된 경우 true
+
+- privacyExposure:
+  개인정보의 실제 노출 또는 중대한 유포 위험이 확인된 경우 true
+
+각 필드는 true, false 또는 null을 사용한다.
+근거가 부족하면 false로 단정하지 않고 null을 사용한다.
+관련 단어가 언급됐다는 이유만으로 true 처리하지 않는다.
+
+안전 신호는 최종 위험 점수와 별개로 판단한다.
+LLM은 점수 계산이나 최종 위험도 분류를 수행하지 않는다.
+
 """.strip()
 
 

@@ -173,6 +173,7 @@ class AiService:
                     "modelName": self.risk_llm_client.model,
                     "temperature": 0.0,
                 },
+                "safetyFlags": risk_data.get("safetyFlags"),
             }
         )
 

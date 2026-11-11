@@ -132,6 +132,10 @@ class LlmRiskAnalysisResult(BaseModel):
 # Backend 응답으로 직접 반환하지 않는다.
 # ============================================================
 
+class ContextAnalysisRequest(BaseModel):
+    content: str = Field(min_length=1)
+
+
 class ContextAnalysisResult(BaseModel):
     communicationIntent: Literal[
         "INFORMATION_INQUIRY",

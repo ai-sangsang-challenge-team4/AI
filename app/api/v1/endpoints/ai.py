@@ -3,6 +3,8 @@ from fastapi import APIRouter
 from app.schemas.ai import (
     AiAnalyzeRequest,
     LlmRiskAnalysisResult,
+    ContextAnalysisRequest,
+    ContextAnalysisResult,
 )
 from app.schemas.revision import (
     RevisionRequest,
@@ -49,6 +51,27 @@ def analyze(
     return ai_service.analyze(
         complaint=request.complaint,
         rule_results=request.ruleResults,
+    )
+
+
+# ============================================================
+# 민원 유형 및 문맥 분석
+# ============================================================
+
+@router.post(
+    "/context",
+    response_model=ContextAnalysisResult,
+    summary="학부모 민원 유형 및 문맥 분석",
+    description=(
+        "Claude가 민원의 의도와 주요 주제를 분류하고 "
+        "판단 근거 및 추가 이력 필요 여부를 분석합니다."
+    ),
+)
+def context_analysis(
+    request: ContextAnalysisRequest,
+):
+    return ai_service.analyze_context(
+        complaint=request.content
     )
 
 

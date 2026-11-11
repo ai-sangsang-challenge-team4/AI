@@ -52,6 +52,20 @@ class RiskTagResult(BaseModel):
     code: RiskTagCode
     state: RiskTagState
     confidence: float | None = None
+
+    # LLM 문맥 기반 심각도 (0~3)
+    # BOUNDARY / UNKNOWN은 null
+    severity: int | None = Field(
+        default=None,
+        ge=0,
+        le=3,
+    )
+
+    # 현재 민원에서 확인된 위험 표현 횟수
+    repeatCount: int | None = Field(
+        default=None,
+        ge=0,
+    )
     evidenceSpans: list[EvidenceSpan] = Field(
         default_factory=list
     )
@@ -98,11 +112,18 @@ class LlmAnalysisMetadata(BaseModel):
 # 실제 /api/v1/ai/analyze 응답은 반드시 이 구조만 사용한다.
 # ============================================================
 
+class SafetyFlags(BaseModel):
+    credibleThreat: bool | None = None
+    studentSafetyConcern: bool | None = None
+    privacyExposure: bool | None = None
+
+
 class LlmRiskAnalysisResult(BaseModel):
     tags: list[RiskTagResult] = Field(
         default_factory=list
     )
     metadata: LlmAnalysisMetadata
+    safetyFlags: SafetyFlags | None = None
 
 
 # ============================================================

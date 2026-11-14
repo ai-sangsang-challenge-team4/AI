@@ -11,23 +11,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-RISK_FACTOR_TO_BACKEND = {
-    "GENERAL_PROFANITY_EMOTION": "PROFANITY",
-    "DIRECT_INSULT_PERSONAL_ATTACK": "INSULT",
-    "THREAT_INTIMIDATION": "THREAT",
-    "LEGAL_ADMIN_ACTION_MENTION": "LEGAL",
-    "PUBLIC_DISCLOSURE_THREAT": "EXPOSURE",
-    "REPETITION": "REPEAT",
-    "UNREASONABLE_DEMAND": "UNFAIR_REQUEST",
-    "PERSONAL_INFO_MISUSE_RISK": "PRIVACY",
-}
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-ALLOWED_STATUSES = {
-    "PRESENT",
-    "ABSENT",
-    "BOUNDARY",
-    "UNKNOWN",
-}
+from scripts.evaluation.data import (
+    RISK_FACTOR_TO_BACKEND, ALLOWED_STATES as ALLOWED_STATUSES,
+    check_disjoint, load_dataset,
+)
 
 ALLOWED_YES_NO = {
     "YES",
@@ -720,14 +710,31 @@ def main() -> int:
 
     parser.add_argument(
         "--data-dir",
-        default="data/dev",
+        default=None,
         help="개발용 CSV 폴더 경로 (기본값: data/dev)",
     )
 
+    parser.add_argument("--dataset", choices=("auto", "dev", "goldenset"), default="auto")
+    parser.add_argument("--overlap-data-dir")
     args = parser.parse_args()
+    repo_root = Path(__file__).resolve().parents[1]
+    chosen_dir = args.data_dir or repo_root / "data" / ("goldenset" if args.dataset == "goldenset" else "dev")
+    try:
+        dataset = load_dataset(chosen_dir, args.dataset)
+        other_schema = "dev" if dataset.schema == "goldenset" else "goldenset"
+        other = load_dataset(args.overlap_data_dir or repo_root / "data" / other_schema, other_schema)
+        overlap = check_disjoint(dataset.cases, other.cases)
+        if not overlap["passed"]:
+            raise ValueError("dev/gold ID or normalized message overlap")
+    except (ValueError, OSError) as exc:
+        print(f"FAIL: {exc}", file=sys.stderr)
+        return 1
+    if dataset.schema == "goldenset":
+        print(f"PASS: {len(dataset.cases)} cases, 8 labels per case, golden CSV states agree, no dev overlap")
+        return 0
 
     data_dir = Path(
-        args.data_dir
+        chosen_dir
     )
 
     cases_path = (

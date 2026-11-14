@@ -1,4 +1,6 @@
-from fastapi import APIRouter
+from functools import lru_cache
+
+from fastapi import APIRouter, Depends
 
 from app.schemas.ai import (
     AiAnalyzeRequest,
@@ -24,7 +26,9 @@ router = APIRouter(
     tags=["AI"],
 )
 
-ai_service = AiService()
+@lru_cache(maxsize=1)
+def get_ai_service():
+    return AiService()
 
 
 # ============================================================
@@ -47,6 +51,7 @@ ai_service = AiService()
 )
 def analyze(
     request: AiAnalyzeRequest,
+    ai_service: AiService = Depends(get_ai_service),
 ):
     return ai_service.analyze(
         complaint=request.complaint,
@@ -69,6 +74,7 @@ def analyze(
 )
 def context_analysis(
     request: ContextAnalysisRequest,
+    ai_service: AiService = Depends(get_ai_service),
 ):
     return ai_service.analyze_context(
         complaint=request.content
@@ -91,6 +97,7 @@ def context_analysis(
 )
 def revision(
     request: RevisionRequest,
+    ai_service: AiService = Depends(get_ai_service),
 ):
     return ai_service.revise_complaint(
         request
@@ -112,6 +119,7 @@ def revision(
 )
 def summary(
     request: SummaryRequest,
+    ai_service: AiService = Depends(get_ai_service),
 ):
     return ai_service.generate_summary(
         request.content
@@ -133,6 +141,7 @@ def summary(
 )
 def response_draft(
     request: ResponseDraftRequest,
+    ai_service: AiService = Depends(get_ai_service),
 ):
     return ai_service.generate_response_draft(
         request.content

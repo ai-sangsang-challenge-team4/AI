@@ -1,0 +1,5 @@
+# Lightweight offline runtime/test dependencies; no provider SDK or RAG/vector DB.
+pytest==8.4.2
+fastapi==0.135.2
+pydantic==2.12.5
+httpx==0.28.1

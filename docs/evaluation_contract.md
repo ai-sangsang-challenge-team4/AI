@@ -8,6 +8,7 @@
 
 ```bash
 python3 -m unittest discover -s tests -p 'test_tagging_evaluation.py' -v
+python3 -m unittest discover -s tests -p 'test_evaluation_transport.py' -v
 python3 scripts/evaluate_risk_prompt_updated.py --validate-only
 python3 scripts/evaluate_risk_prompt_updated.py --dataset goldenset --validate-only
 python3 scripts/validate_dev_dataset.py
@@ -98,9 +99,11 @@ dev의 `risk_factor/status/evidence_span`과 goldenset의 `riskTagCode/state/evi
 
 위 예시의 `tags`는 구조 설명용 자리표시자다. 실제 성공 응답에는 8종 태그가 정확히 한 번씩 있어야 한다. 원본 API 응답을 보존하므로 severity·repeatCount·safetyFlags도 있으면 저장한다. 해당 항목의 정답이나 성능 지표는 생성하지 않는다.
 
-외부 생산자는 최소 `case_id/response`를 제공할 수 있다. mode·입력 해시가 있으면 일치 여부를 검사하며, 없는 기존 예측은 `source_provenance_verified=false`다. 해시가 있다는 것은 입력 파일과 일치한다는 의미이며 외부 생산자가 정답을 보지 않았다는 보증은 아니다. 평가기가 저장한 JSONL은 재평가 입력으로 사용할 수 있다.
+외부 생산자는 최소 `case_id/response`를 제공할 수 있다. mode·입력 해시가 있으면 일치 여부를 검사하며, 없는 기존 예측은 `source_provenance_verified=false`다. 직접 캡처한 요청은 `input_hash_origin=captured_request`, 재평가를 위해 현재 입력에서 만든 해시는 `reconstructed_for_replay`로 구분한다. 미확인 예측에 해시를 추가해 다시 저장해도 `source_provenance_verified=false`가 유지된다. 해시가 있다는 것은 입력 파일과 일치한다는 의미이며 외부 생산자가 정답을 보지 않았다는 보증은 아니다.
 
-`latency_ms`는 현재 **RAG 포함 전체 요청 시간**이다. LLM 전용 시간·토큰·비용으로 해석하지 않는다. 평가기 자체 재시도는 없고 `attempt=1`이다. SDK·서버 내부 재시도는 이 값으로 계산할 수 없다.
+평가기가 저장한 JSONL은 재평가 입력으로 사용할 수 있다. 저장된 실패(`request_success=0`)는 응답이 파싱 가능해도 실패로 유지하며, 허용된 `error_code`와 원본 JSON 응답을 보존한다. 임의 예외 문장이 든 오류 코드는 `request:recorded_request_failure`로 대체한다. JSON으로 저장할 수 없는 실패 응답은 `response=null`과 `recorded_response_sanitized=true`로 표시하고, 잘못된 시간·스냅샷 값도 정리한다. 이 처리는 실패를 정상 예측이나 ABSENT로 보정하지 않는다.
+
+`latency_ms`는 현재 **RAG 포함 전체 요청 시간**이다. 저장 예측 재평가에서는 원래 기록된 시간을 사용하며 재평가 처리 시간을 모델 응답 시간으로 기록하지 않는다. LLM 전용 시간·토큰·비용으로 해석하지 않는다. 평가기 자체 재시도는 없고 `attempt=1`이다. SDK·서버 내부 재시도는 이 값으로 계산할 수 없다.
 
 모드 옵션만으로 통제된 A/B가 완성되지는 않는다. 현 API는 검색 결과를 입력으로 받지 않고 매번 검색한다. 채연님 구현에서 동일 문서·순서·검색 설정·생성 설정을 고정할 내부 연결 지점과 스냅샷 계약이 필요하다. 현재 `rag_snapshot_id`와 서버의 검색 문서 해시는 이를 식별할 준비이며, 검색 결과 주입·캐시 기능은 구현하지 않았다. 일반 실행 비교는 `controlled_ab=false`로 표시한다.
 
@@ -155,4 +158,4 @@ manifest는 다음을 구분한다.
 - #33의 오프라인 20건 부분 조건 테스트와 운영 로그는 [회귀·로그 문서](regression_and_logging.md)에 설명한다. 실제 모델 20건의 품질 검증은 수행하지 않았다. #28의 BOUNDARY 하향·REPEAT 강제 보정·생성 검증 등은 해당 문서의 미완료 계약을 따른다.
 - 태그별 F1 그래프·최종 위험도 그래프는 이 태깅 파이프라인 범위에 포함하지 않았다.
 
-테스트는 모의 전송·저장 예측을 사용한다. 실제 모델/서버 E2E, FastAPI 런타임 연동, 유료 호출의 성능 검증을 대신하지 않는다. push·PR 생성도 수행하지 않았다.
+테스트는 모의 전송·저장 예측을 사용한다. FastAPI 라우팅·서비스·실패 응답은 #33의 오프라인 TestClient로 검증한다. 실제 provider SDK 통신, 배포 서버 E2E, 유료 호출의 품질·성능 검증은 별도 실행이 필요하다. 원격 CI 결과는 PR의 Checks에서 확인한다.

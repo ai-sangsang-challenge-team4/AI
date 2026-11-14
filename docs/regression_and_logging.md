@@ -55,11 +55,14 @@ python -m pytest
 이번 변경으로 실제 동작하는 부분:
 
 - 허용 태그·상태, 중복·누락 8종, severity/count 조합, safetyFlags 구조 검사
+- 잘못된 근거 컨테이너·숫자/null 근거·빈 문구를 빈 배열로 지우지 않고 스키마 실패로 처리
 - 깨진 JSON·스키마 불일치·원문 밖 근거에 대해 위험 태깅 출력 한 번 재시도
 - 두 번 모두 실패하면 502와 제한된 오류 코드 반환. 정상 태그를 임의 생성하지 않음
 - 근거가 마스킹된 입력 원문에 없으면 응답 전체를 거부하는 최소 차단
 - timeout은 504, provider 오류는 502. 자유 형식 예외·응답 전문을 로그/실패 응답에 포함하지 않음
 - Claude SDK의 30초 timeout과 `max_retries=0`으로 애플리케이션 재시도와 SDK 재시도의 중첩 방지
+
+비어 있지 않은 근거 문자열·문자열 배열은 기존 호환성을 위해 EvidenceSpan 객체 배열로 변환한다. 객체의 `text`도 비어 있지 않은 문자열이어야 한다. `[]`는 기존 계약대로 허용하므로 이 검사가 PRESENT의 필수 근거 개수 정책을 추가하는 것은 아니다.
 
 위험 태깅은 잘못된 출력에 대해 최대 2회 생성하고 동일한 검색 결과와 프롬프트를 재사용한다. timeout·provider 오류는 애플리케이션에서 재시도하지 않는다. 문맥 분석·요약·수정·초안은 같은 안전 오류 경계를 사용하지만 출력 수정이나 추가 생성 검증을 구현한 것은 아니다. Gemini SDK 내부 정책은 이번에 변경하지 않았다.
 
@@ -107,7 +110,7 @@ JSON 엔드포인트의 응답을 미들웨어에서 버퍼링하므로, Pydanti
 {"error": {"code": "LLM_INVALID_SCHEMA"}, "requestId": "서버 생성 ID"}
 ```
 
-주요 상태: 잘못된 요청 422, 모델 JSON/스키마/근거/provider 실패 502, LLM timeout 504, 검색 실패 503, 예상 밖 내부 오류 500. 클라이언트는 예전 Pydantic `detail`·자유 형식 에러 문장 대신 이 코드와 ID를 사용하도록 확인해야 한다.
+주요 상태: 잘못된 요청 422, 모델 JSON/스키마/근거/provider 실패 502, LLM timeout 504, 검색 실패 503, 예상 밖 내부 오류 500. `/api/v1/rag/search`는 검색 결과의 응답 구조 검증까지 검색 실패 경계 안에서 처리하므로, 잘못된 결과 형식도 `RAG_UNAVAILABLE`과 503으로 반환한다. 클라이언트는 예전 Pydantic `detail`·자유 형식 에러 문장 대신 이 코드와 ID를 사용하도록 확인해야 한다.
 
 테스트는 성공·timeout·JSON·스키마·근거·검색·provider·request/response 검증 실패에 비밀 표식을 주입해 운영 로그·stdout·stderr·실패 본문에서 미노출을 검사한다. 실패 응답에 원문을 포함하는 FastAPI 기본 422도 교체한다. 병렬 요청 8건의 ID 분리와 JSON formatter의 임의 메시지·traceback 무시도 검증한다. 성공 응답의 업무상 요약/근거는 기존 API 계약대로 반환하며, 운영 로그에 복사하지 않는다.
 
@@ -115,7 +118,7 @@ JSON 엔드포인트의 응답을 미들웨어에서 버퍼링하므로, Pydanti
 
 `.github/workflows/offline-regression.yml`은 PR 및 수동 실행용이다. 테스트 의존성만 설치하고 `python -m pytest --aggregate-report reports/ci/aggregate.json`을 실행한다. 코드 읽기 권한만 사용하며 모델 비밀키를 전달하지 않는다. 유료 모델·RAG 호출 단계가 없다.
 
-기본 보관 artifact는 `reports/ci/aggregate.json` **한 파일**이며 통과/실패/skip/xfail 수, 핵심 20건 집계, 종료 코드와 실행 시간만 포함한다. 입력·응답·로그·case ID·예외 전문은 포함하지 않는다. #26의 `results.csv`, `predictions.jsonl`, 원문이 있는 보고서나 pytest traceback/JUnit 전체를 artifact로 업로드하지 않는다. 집계 파일에 xfail 수가 남으므로 미완료 사항을 성공 수로 합치지 않는다. PR을 실제 push하지 않았으므로 GitHub에서 workflow를 실행한 결과는 아직 없다.
+기본 보관 artifact는 `reports/ci/aggregate.json` **한 파일**이며 통과/실패/skip/xfail 수, 핵심 20건 집계, 종료 코드와 실행 시간만 포함한다. 입력·응답·로그·case ID·예외 전문은 포함하지 않는다. #26의 `results.csv`, `predictions.jsonl`, 원문이 있는 보고서나 pytest traceback/JUnit 전체를 artifact로 업로드하지 않는다. 집계 파일에 xfail 수가 남으므로 미완료 사항을 성공 수로 합치지 않는다. 원격 workflow의 실행 여부와 결과는 해당 PR의 Checks에서 확인한다.
 
 기존 #26 평가 보고서는 `reports/<평가실행>/`, CI 집계는 `reports/ci/`, 운영 이벤트는 stderr의 전용 logger로 분리한다. 실제 모델 성능 측정은 별도 승인 하에 #26 명령으로 실행하고, 그 결과를 CI의 오프라인 통과 수와 혼합하지 않는다.
 

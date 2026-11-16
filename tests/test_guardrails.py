@@ -50,9 +50,53 @@ def test_bad_output_is_retried_once_then_fails_closed(kind, expected):
     assert len(client.prompts) == 2
 
 
-@pytest.mark.parametrize("first", ["{broken", json.dumps({"tags": []})])
+@pytest.mark.parametrize("first", [None, 123, "{broken", json.dumps({"tags": []})])
 def test_one_output_retry_can_recover(first):
     client = FakeLlm(first, json.dumps(risk_output()))
+    assert call_analyze(client).status_code == 200
+    assert len(client.prompts) == 2
+
+
+@pytest.mark.parametrize("temperature", [0.7, None])
+def test_metadata_records_effective_generation_temperature(temperature):
+    client = FakeLlm()
+    client.generation_settings = {"max_tokens": 4096}
+    if temperature is not None:
+        client.generation_settings["temperature"] = temperature
+    result = call_analyze(client)
+    assert result.status_code == 200
+    assert result.json()["metadata"]["temperature"] == temperature
+    assert result.json()["metadata"]["generationSettings"] == client.generation_settings
+
+
+@pytest.mark.parametrize("offsets", [(0, 5), (1, 4)])
+def test_evidence_text_and_offsets_remain_consistent(offsets):
+    text = " abc " if offsets == (0, 5) else "abc"
+    value = risk_output({"THREAT": "PRESENT"})
+    tag = next(tag for tag in value["tags"] if tag["code"] == "THREAT")
+    tag["evidenceSpans"] = [{"text": text, "start": offsets[0], "end": offsets[1]}]
+    result = call_analyze(FakeLlm(json.dumps(value)), complaint=" abc ")
+    assert result.status_code == 200
+    actual = next(tag for tag in result.json()["tags"] if tag["code"] == "THREAT")["evidenceSpans"][0]
+    assert " abc "[actual["start"]:actual["end"]] == actual["text"]
+
+
+@pytest.mark.parametrize("start,end", [(0, 3), (-1, 4), (1, 99), (1, None), (None, 4), (True, 4), ("1", 4)])
+def test_invalid_evidence_offsets_use_output_retry(start, end):
+    value = risk_output({"THREAT": "PRESENT"})
+    next(tag for tag in value["tags"] if tag["code"] == "THREAT")["evidenceSpans"] = [
+        {"text": "abc", "start": start, "end": end}]
+    client = FakeLlm(json.dumps(value), json.dumps(risk_output()))
+    result = call_analyze(client, complaint=" abc ")
+    assert result.status_code == 200
+    assert len(client.prompts) == 2
+
+
+def test_overflowing_json_number_is_retried_before_response_rendering():
+    value = risk_output()
+    value["tags"][0]["confidence"] = "OVERFLOW_TOKEN"
+    raw = json.dumps(value).replace('"OVERFLOW_TOKEN"', '1e400')
+    client = FakeLlm(raw, json.dumps(risk_output()))
     assert call_analyze(client).status_code == 200
     assert len(client.prompts) == 2
 

@@ -103,7 +103,7 @@ class AiAnalyzeRequest(BaseModel):
 
 class LlmAnalysisMetadata(BaseModel):
     modelName: str
-    temperature: float
+    temperature: float | None
     # Optional additions: existing callers still need only the two fields above.
     generationSettings: dict | None = None
     evaluationProvenance: dict | None = None

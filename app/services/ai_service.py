@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 
 from app.core.errors import AiFailure, ErrorCode
 from app.core.operational_logging import record_model
@@ -99,8 +100,8 @@ class AiService:
         # Timeouts/provider failures are not retried here (SDK retries are disabled).
         last_code = ErrorCode.LLM_INVALID_SCHEMA
         for attempt in range(2):
-            response = self._generate(self.risk_llm_client, prompt)
             try:
+                response = self._generate(self.risk_llm_client, prompt)
                 risk_data = self._parse_json_response(response, error_message="invalid risk JSON")
                 risk_data = self._normalize_risk_tag_response(risk_data)
                 self._validate_risk_tags(risk_data)
@@ -110,16 +111,26 @@ class AiService:
                     for span in tag["evidenceSpans"]:
                         if span["text"] not in complaint:
                             raise AiFailure(ErrorCode.LLM_INVALID_EVIDENCE)
+                        start, end = span.get("start"), span.get("end")
+                        if start is not None or end is not None:
+                            if (type(start) is not int or type(end) is not int
+                                    or not 0 <= start < end <= len(complaint)
+                                    or complaint[start:end] != span["text"]):
+                                raise AiFailure(ErrorCode.LLM_INVALID_EVIDENCE)
                 return LlmRiskAnalysisResult.model_validate({
                     "tags": risk_data["tags"],
                     "metadata": {
-                        "modelName": self.risk_llm_client.model, "temperature": 0.0,
+                        "modelName": self.risk_llm_client.model,
+                        "temperature": self.risk_llm_client.generation_settings.get("temperature"),
                         "generationSettings": dict(self.risk_llm_client.generation_settings),
                         "evaluationProvenance": evaluation_provenance(documents, self.retriever),
                     },
                     "safetyFlags": risk_data.get("safetyFlags"),
                 })
             except AiFailure as exc:
+                if exc.code not in (ErrorCode.LLM_INVALID_JSON, ErrorCode.LLM_INVALID_SCHEMA,
+                                    ErrorCode.LLM_INVALID_EVIDENCE):
+                    raise
                 last_code = exc.code
             except (ValueError, TypeError, KeyError, AttributeError):
                 last_code = ErrorCode.LLM_INVALID_SCHEMA
@@ -655,7 +666,7 @@ JSON 앞뒤에 설명을 붙이지 마십시오.
                         span_text = span.get("text")
                         if not isinstance(span_text, str) or not span_text.strip():
                             raise ValueError("invalid evidence text")
-                        span_text = span_text.strip()
+                        # Keep located evidence verbatim so offsets still address its text.
 
                         if span_text:
                             normalized_spans.append(
@@ -840,7 +851,12 @@ JSON 앞뒤에 설명을 붙이지 마십시오.
         try:
             def invalid_constant(value):
                 raise ValueError("non-finite JSON constant")
-            data = json.loads(response, parse_constant=invalid_constant)
+            def finite_float(value):
+                number = float(value)
+                if not math.isfinite(number):
+                    raise ValueError("non-finite JSON number")
+                return number
+            data = json.loads(response, parse_constant=invalid_constant, parse_float=finite_float)
         except (ValueError, TypeError):
             raise AiFailure(ErrorCode.LLM_INVALID_JSON) from None
         if not isinstance(data, dict):

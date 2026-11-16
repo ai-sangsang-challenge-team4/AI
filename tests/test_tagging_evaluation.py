@@ -490,20 +490,21 @@ class PipelineTests(OfflineTest):
         from scripts.evaluation import reporting
         root = self.directory / "reports"
         root.mkdir()
-        manifest_ready, copied = Event(), Event()
-        original_manifest, original_copy = reporting.build_manifest, reporting.shutil.copyfile
-        def build(*args, **kwargs):
-            manifest_ready.set()
-            return original_manifest(*args, **kwargs)
+        lock_attempted, copied = Event(), Event()
+        original_lock, original_copy = fcntl.flock, reporting.shutil.copyfile
+        def acquire(file, operation):
+            if operation == fcntl.LOCK_EX:
+                lock_attempted.set()
+            return original_lock(file, operation)
         def copy(*args, **kwargs):
             copied.set()
             return original_copy(*args, **kwargs)
         with (root / ".publish.lock").open("a") as lock, ThreadPoolExecutor(max_workers=1) as pool:
             fcntl.flock(lock, fcntl.LOCK_EX)
-            with patch("scripts.evaluation.runner.build_manifest", side_effect=build), patch.object(reporting.shutil, "copyfile", side_effect=copy):
+            with patch.object(fcntl, "flock", side_effect=acquire), patch.object(reporting.shutil, "copyfile", side_effect=copy):
                 future = pool.submit(self.run_mock)
                 try:
-                    self.assertTrue(manifest_ready.wait(5))
+                    self.assertTrue(lock_attempted.wait(5))
                     self.assertFalse(copied.wait(0.2), "publication must wait for the other process")
                 finally:
                     fcntl.flock(lock, fcntl.LOCK_UN)

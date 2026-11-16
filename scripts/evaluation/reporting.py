@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import fcntl
 import json
 import shutil
 import subprocess
@@ -46,7 +47,7 @@ def git_info():
         return {"sha": None, "dirty": None}
 
 
-def build_manifest(dataset, cases, records, options, overlap):
+def build_manifest(dataset, cases, records, options, overlap, *, rule_sha256=None):
     def artifact(path, version=None):
         path = Path(path)
         digest = file_hash(path) if path.is_file() else None
@@ -75,7 +76,8 @@ def build_manifest(dataset, cases, records, options, overlap):
     prompt["source"] = "local_checkout; not proof of remote deployment"
     rag = artifact(REPO_ROOT / "app/rag/retriever.py", options.rag_version)
     rag["source"] = "local_retriever_source; corpus/index hash requires server provenance"
-    rule = (artifact(options.rule_results, options.rule_version) if options.rule_results
+    rule = ({"version": options.rule_version or "sha256:" + rule_sha256,
+             "sha256": rule_sha256, "path": str(options.rule_results)} if options.rule_results
             else {"version": options.rule_version or "none", "sha256": json_hash([]), "source": "empty_rule_results"})
     return {
         "schema_version": 1, "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -128,8 +130,16 @@ def read_result_rows(path):
 def compare_run(previous_dir, manifest, rows):
     previous_dir = Path(previous_dir)
     previous = json.loads((previous_dir / "manifest.json").read_text(encoding="utf-8"))
+    if not isinstance(previous, dict):
+        raise ValueError("previous manifest must be an object")
     if previous.get("schema_version") != 1:
         raise ValueError("unsupported previous manifest schema")
+    for field in ("dataset", "evaluation", "artifacts"):
+        if not isinstance(previous.get(field), dict):
+            raise ValueError(f"previous manifest {field} must be an object")
+    for value in (previous["dataset"].get("sha256"), previous["artifacts"].get("results.csv")):
+        if not isinstance(value, str) or len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
+            raise ValueError("previous manifest requires valid dataset and results.csv hashes")
     if previous["dataset"]["sha256"] != manifest["dataset"]["sha256"] or previous["evaluation"] != manifest["evaluation"]:
         raise ValueError("previous run uses a different dataset or evaluation policy")
     expected_hash = previous.get("artifacts", {}).get("results.csv")
@@ -245,7 +255,12 @@ def save_run(report_root, version, manifest, metrics, rows, cases, records, comp
     manifest["artifacts"] = {p.name: file_hash(p) for p in directory.iterdir() if p.is_file()}
     write_json(directory / "manifest.json", manifest)
     # Keep original fixed filenames as a latest snapshot for existing consumers.
-    for name in (*files, "summary.json", "metrics.json"):
-        shutil.copyfile(directory / name, Path(report_root) / name)
-    write_json(Path(report_root) / "latest.json", {"run_id": run_id, "directory": str(directory.resolve())})
+    with (Path(report_root) / ".publish.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            for name in (*files, "summary.json", "metrics.json"):
+                shutil.copyfile(directory / name, Path(report_root) / name)
+            write_json(Path(report_root) / "latest.json", {"run_id": run_id, "directory": str(directory.resolve())})
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
     return directory

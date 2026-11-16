@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import re
 import time
@@ -107,8 +108,11 @@ def evaluate(options, transport=None):
         return {"validated": True, "schema": dataset.schema, "cases": len(dataset.cases),
                 "labels": sum(len(v) for v in dataset.labels.values()), "overlap": overlap}, None, 0
     rules = {}
+    rule_sha256 = None
     if options.rule_results:
-        rules = json.loads(Path(options.rule_results).read_text(encoding="utf-8"))
+        rule_bytes = Path(options.rule_results).read_bytes()
+        rule_sha256 = hashlib.sha256(rule_bytes).hexdigest()
+        rules = json.loads(rule_bytes)
         if not isinstance(rules, dict):
             raise ValueError("rule-results must map case_id to Backend RiskTagResult arrays")
     if options.mode == "llm" and options.rule_results:
@@ -231,7 +235,7 @@ def evaluate(options, transport=None):
             break
         if replay is None and index + 1 < len(cases) and options.sleep:
             time.sleep(options.sleep)
-    manifest = build_manifest(dataset, cases, records, options, overlap)
+    manifest = build_manifest(dataset, cases, records, options, overlap, rule_sha256=rule_sha256)
     metrics = compute_metrics(rows, len(cases), options.policies)
     metrics["review_groups"] = {
         group: compute_metrics([row for row in rows if row["review_group"] == group],

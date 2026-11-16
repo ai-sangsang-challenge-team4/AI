@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import csv
+import fcntl
+import hashlib
 import importlib
 import io
 import json
@@ -11,6 +13,8 @@ import sys
 import tempfile
 import types
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -454,6 +458,60 @@ class PipelineTests(OfflineTest):
         (_, after, status), _ = self.run_mock(previous=str(before))
         self.assertEqual(status, 1)
         self.assertIn("hash", json.loads((after / "diff.json").read_text())["reason"])
+
+    def test_malformed_previous_manifests_preserve_current_results(self):
+        (_, before, _), _ = self.run_mock()
+        valid = json.loads((before / "manifest.json").read_text())
+        malformed = [[], None, 3, {**valid, "dataset": []}, {**valid, "evaluation": None},
+                     {**valid, "artifacts": []}, {**valid, "dataset": {"sha256": []}}]
+        for value in malformed:
+            with self.subTest(value=value):
+                (before / "manifest.json").write_text(json.dumps(value))
+                (_, after, status), _ = self.run_mock(previous=str(before))
+                self.assertEqual(status, 1)
+                self.assertTrue((after / "results.csv").is_file())
+                self.assertEqual(json.loads((after / "diff.json").read_text())["status"], "incompatible")
+
+    def test_rule_hash_uses_bytes_captured_before_requests(self):
+        rules = {f"T{i}": [] for i in range(1, 5)}
+        path = self.directory / "rules.json"
+        original = json.dumps(rules).encode()
+        path.write_bytes(original)
+        args = options(self.directory); args.mode = "rule_llm"; args.rule_results = str(path)
+        def transport(*unused):
+            path.write_text("changed during requests")
+            return response()
+        _, directory, status = evaluate(args, transport)
+        self.assertEqual(status, 0)
+        manifest = json.loads((directory / "manifest.json").read_text())
+        self.assertEqual(manifest["rule"]["sha256"], hashlib.sha256(original).hexdigest())
+
+    def test_shared_snapshot_publication_waits_for_interprocess_lock(self):
+        from scripts.evaluation import reporting
+        root = self.directory / "reports"
+        root.mkdir()
+        manifest_ready, copied = Event(), Event()
+        original_manifest, original_copy = reporting.build_manifest, reporting.shutil.copyfile
+        def build(*args, **kwargs):
+            manifest_ready.set()
+            return original_manifest(*args, **kwargs)
+        def copy(*args, **kwargs):
+            copied.set()
+            return original_copy(*args, **kwargs)
+        with (root / ".publish.lock").open("a") as lock, ThreadPoolExecutor(max_workers=1) as pool:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            with patch("scripts.evaluation.runner.build_manifest", side_effect=build), patch.object(reporting.shutil, "copyfile", side_effect=copy):
+                future = pool.submit(self.run_mock)
+                try:
+                    self.assertTrue(manifest_ready.wait(5))
+                    self.assertFalse(copied.wait(0.2), "publication must wait for the other process")
+                finally:
+                    fcntl.flock(lock, fcntl.LOCK_UN)
+                (_, directory, status), _ = future.result(timeout=5)
+        self.assertEqual(status, 0)
+        latest = json.loads((root / "latest.json").read_text())
+        self.assertEqual(latest["run_id"], directory.name)
+        self.assertEqual((root / "results.csv").read_bytes(), (directory / "results.csv").read_bytes())
 
     def test_legacy_metadata_does_not_invent_actual_settings(self):
         def transport(*unused):

@@ -118,7 +118,7 @@ JSON 엔드포인트의 응답을 미들웨어에서 버퍼링하므로, Pydanti
 
 ## CI와 평가 산출물 분리
 
-`.github/workflows/offline-regression.yml`은 PR 및 수동 실행용이다. 테스트 의존성만 설치하고 `python -m pytest --aggregate-report reports/ci/aggregate.json`을 실행한다. 코드 읽기 권한만 사용하며 모델 비밀키를 전달하지 않는다. 유료 모델·RAG 호출 단계가 없다.
+`.github/workflows/offline-regression.yml`은 PR 및 수동 실행용이다. 테스트 의존성과 선택적 그래프 의존성을 설치하고 `python -m pytest --aggregate-report reports/ci/aggregate.json`을 실행한다. 합성 데이터의 PNG 생성까지 검증한다. 코드 읽기 권한만 사용하며 모델 비밀키를 전달하지 않는다. 유료 모델·RAG 호출 단계가 없다.
 
 기본 보관 artifact는 `reports/ci/aggregate.json` **한 파일**이며 통과/실패/skip/xfail 수, 핵심 20건 집계, 종료 코드와 실행 시간만 포함한다. 입력·응답·로그·case ID·예외 전문은 포함하지 않는다. #26의 `results.csv`, `predictions.jsonl`, 원문이 있는 보고서나 pytest traceback/JUnit 전체를 artifact로 업로드하지 않는다. 집계 파일에 xfail 수가 남으므로 미완료 사항을 성공 수로 합치지 않는다. 원격 workflow의 실행 여부와 결과는 해당 PR의 Checks에서 확인한다.
 

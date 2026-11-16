@@ -156,12 +156,12 @@ manifest는 다음을 구분한다.
 
 ## 남은 계약 / 이번 범위 밖
 
-- 최종 위험도: Backend Risk Engine 요청·응답/버전·공유 임계값 계약과 사례별 4단계 위험도 정답 필요. urgentHumanReview·generation_bucket·THREAT 태그를 위험도 정답으로 변환하지 않는다.
-- context_subtype: 골든셋에 해당 컬럼이 없어 세부유형 정답·코드북 합의 필요. 현재 subtype 지표는 구현하지 않고 manifest에 미평가로 기록한다.
+- 최종 위험도: 실제 Backend Risk Engine 출력과 확정 정답의 평가·저장·비교를 지원한다. 추가 입력과 엔진 버전·입력 해시 계약은 [위험도·세부 유형 가이드](supplemental_evaluation.md)를 따른다. 원본 골든셋에 위험도 정답이 없어 사람 검토가 필요하며, urgentHumanReview·THREAT 태그를 정답으로 변환하지 않는다.
+- context_subtype: 별도 CONFIRMED 정답에 기반한 유형별 태그 상태 지표를 지원한다. 유형 어휘는 사람 검토 시 합의해야 한다. 원본에 없는 subtype을 추정하지 않으며, 미확정 집단 지표는 null로 남긴다.
 - REPEAT: 구조화된 이력 전달 계약과 동일 정보 조건의 정답 평가가 필요하다.
 - severity·repeatCount·safetyFlags: 예측을 보존하되 추가 정답 없이는 평가하지 않는다.
 - #25: 백엔드 규칙 확보 및 동결된 RAG 스냅샷 재사용, 반복 실행·비용 분석은 채연님 실험 구현에 연결한다.
 - #33의 오프라인 20건 부분 조건 테스트와 운영 로그는 [회귀·로그 문서](regression_and_logging.md)에 설명한다. 실제 모델 20건의 품질 검증은 수행하지 않았다. #28의 BOUNDARY 하향·REPEAT 강제 보정·생성 검증 등은 해당 문서의 미완료 계약을 따른다.
-- 태그별 F1 그래프·최종 위험도 그래프는 이 태깅 파이프라인 범위에 포함하지 않았다.
+- `--charts`로 태그별 F1·태그 혼동행렬과 정답/백엔드 결과가 있는 위험도·세부 유형 PNG를 저장한다. 렌더러 오류에도 평가 결과를 보존한다.
 
 테스트는 모의 전송·저장 예측을 사용한다. FastAPI 라우팅·서비스·실패 응답은 #33의 오프라인 TestClient로 검증한다. 실제 provider SDK 통신, 배포 서버 E2E, 유료 호출의 품질·성능 검증은 별도 실행이 필요하다. 원격 CI 결과는 PR의 Checks에서 확인한다.

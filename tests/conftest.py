@@ -21,6 +21,8 @@ def pytest_configure(config):
 
 @pytest.fixture(autouse=True)
 def no_network_or_keys(monkeypatch):
+    # Test app factories must not reload real credentials from a developer's .env.
+    monkeypatch.setattr("app.main.load_dotenv", lambda: False)
     def forbidden(*args, **kwargs):
         raise AssertionError("network_forbidden_in_offline_tests")
     for method in ("connect", "connect_ex"):

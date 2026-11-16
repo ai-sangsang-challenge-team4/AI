@@ -18,6 +18,24 @@ def call_analyze(client, complaint="입력 원문", **kwargs):
         return http.post("/api/v1/ai/analyze", json={"complaint": complaint, "ruleResults": []}, **kwargs)
 
 
+def test_application_loads_dotenv_before_lazy_service_creation(monkeypatch, tmp_path):
+    import os
+    import app.main as main_module
+    from dotenv import load_dotenv
+    path = tmp_path / ".env"
+    path.write_text("TEST_CONFIG_SENTINEL=loaded\n")
+    monkeypatch.delenv("TEST_CONFIG_SENTINEL", raising=False)
+    monkeypatch.setattr(main_module, "load_dotenv", lambda: load_dotenv(path))
+    app = main_module.create_app()
+    def service():
+        assert os.environ["TEST_CONFIG_SENTINEL"] == "loaded"
+        return make_service()
+    app.dependency_overrides[get_ai_service] = service
+    with TestClient(app) as http:
+        result = http.post("/api/v1/ai/analyze", json={"complaint": "테스트", "ruleResults": []})
+    assert result.status_code == 200
+
+
 @pytest.mark.parametrize("kind,expected", [
     ("fake_tag", "LLM_INVALID_SCHEMA"), ("duplicate_tag", "LLM_INVALID_SCHEMA"),
     ("missing_tag", "LLM_INVALID_SCHEMA"), ("invalid_state", "LLM_INVALID_SCHEMA"),

@@ -58,6 +58,10 @@ def build_parser():
     parser.add_argument("--rag-version")
     parser.add_argument("--codebook-version", default="v1-2026-11-09")
     parser.add_argument("--codebook-file", help="공유 코드북 파일이 있으면 해시 기록")
+    parser.add_argument("--targets", help="사람이 검토한 위험도·세부 유형 정답 CSV")
+    parser.add_argument("--risk-predictions", help="Backend Risk Engine이 계산한 위험도 JSON")
+    parser.add_argument("--write-target-template", metavar="CSV", help="정답을 생성하지 않고 빈 검토 양식 저장; HTTP 호출 없음")
+    parser.add_argument("--charts", action="store_true", help="matplotlib로 F1·혼동행렬 PNG 저장")
     return parser
 
 
@@ -72,7 +76,7 @@ def main(argv=None):
     except (ValueError, OSError, KeyError) as exc:
         print(f"평가 설정/데이터 오류: {exc}", file=sys.stderr)
         return 2
-    if args.validate_only:
+    if args.validate_only or args.write_target_template:
         print(json.dumps(metrics, ensure_ascii=False, indent=2))
     else:
         print("평가 범위: 7종 태그, REPEAT 제외(history_not_supplied)")

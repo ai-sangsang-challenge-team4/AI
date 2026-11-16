@@ -1,0 +1,2 @@
+# Optional aggregate chart rendering; basic evaluation remains standard-library only.
+matplotlib==3.10.8

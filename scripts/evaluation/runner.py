@@ -15,6 +15,8 @@ from .data import (BACKEND_CODES, EVALUATED_CODES, FILENAMES, check_disjoint,
                    json_hash, load_dataset)
 from .metrics import compute_metrics, evidence_columns
 from .reporting import REPO_ROOT, build_manifest, compare_run, save_run
+from .supplemental import (SUBTYPES, read_targets, read_backend_predictions, risk_input, risk_rows,
+                           risk_metrics, subtype_metrics, target_subtypes, write_target_template)
 
 ANALYZE_PATH = "/api/v1/ai/analyze"
 
@@ -104,9 +106,22 @@ def prepare_dataset(options):
 
 def evaluate(options, transport=None):
     dataset, cases, overlap = prepare_dataset(options)
+    if options.write_target_template:
+        destination = Path(options.write_target_template)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        write_target_template(dataset, destination)
+        return {"template": str(destination), "cases": len(dataset.cases), "confirmed_targets": 0}, None, 0
+    targets, target_artifact = read_targets(options.targets, dataset)
+    backend_predictions, backend_artifact = read_backend_predictions(options.risk_predictions, dataset, options.mode)
+    if options.risk_predictions and not options.targets:
+        raise ValueError("--risk-predictions requires --targets")
     if options.validate_only:
         return {"validated": True, "schema": dataset.schema, "cases": len(dataset.cases),
-                "labels": sum(len(v) for v in dataset.labels.values()), "overlap": overlap}, None, 0
+                "labels": sum(len(v) for v in dataset.labels.values()), "overlap": overlap,
+                "supplemental_targets": target_artifact, "backend_predictions": backend_artifact}, None, 0
+    if options.charts:
+        from .charts import check_available
+        check_available()
     rules = {}
     rule_sha256 = None
     if options.rule_results:
@@ -184,6 +199,8 @@ def evaluate(options, transport=None):
                 raise ContractError("response_not_json_serializable") from None
             record["response"] = response
             tags = prediction_tags(response)
+            record["risk_input"] = risk_input(response, payload["ruleResults"])
+            record["risk_input_sha256"] = json_hash(record["risk_input"])
             record["request_success"] = 1
         except ContractError as exc:
             record["error_code"] = "contract:" + str(exc)
@@ -212,6 +229,7 @@ def evaluate(options, transport=None):
             rows.append({"case_id": case_id, "code": code, "risk_factor": gold["risk_factor"],
                          "gold_state": gold["status"], "predicted_state": state, "state_match": match,
                          "evaluation_in_scope": int(in_scope),
+                         "context_subtypes": target_subtypes(targets, case_id, code),
                          "scope_exclusion_reason": "" if in_scope else "history_not_supplied",
                          **evidence_columns(gold, tag, payload["complaint"]),
                          "gold_reason": gold.get("reason", ""), "predicted_reason": tag.get("reason", "") if tag else "",
@@ -236,7 +254,27 @@ def evaluate(options, transport=None):
         if replay is None and index + 1 < len(cases) and options.sleep:
             time.sleep(options.sleep)
     manifest = build_manifest(dataset, cases, records, options, overlap, rule_sha256=rule_sha256)
+    manifest["supplemental_targets"] = target_artifact
+    manifest["backend_risk_predictions"] = backend_artifact
+    if target_artifact:
+        manifest["evaluation"]["supplemental_targets_sha256"] = target_artifact["sha256"]
+        manifest["evaluation"]["context_subtype_policy"] = "human_confirmed_overlapping_cohorts_v1"
+        manifest["evaluation"]["context_subtype_vocabulary"] = {code: list(values) for code, values in SUBTYPES.items()}
+        if any(row["context_subtypes"] for row in rows):
+            manifest["not_evaluated"].pop("context_subtype", None)
+    risk_results = risk_rows(targets, records, backend_predictions, [case["case_id"] for case in cases])
     metrics = compute_metrics(rows, len(cases), options.policies)
+    cohort_rows = list(rows)
+    attempted = {record["case_id"] for record in records}
+    for case in cases:
+        if case["case_id"] not in attempted:
+            cohort_rows.extend({"code": code, "request_success": 0,
+                                "context_subtypes": target_subtypes(targets, case["case_id"], code)}
+                               for code in SUBTYPES)
+    metrics["context_subtypes"] = subtype_metrics(cohort_rows, options.policies)
+    metrics["final_risk"] = risk_metrics(risk_results)
+    if backend_artifact and metrics["final_risk"]["successful_cases"]:
+        manifest["not_evaluated"].pop("final_risk", None)
     metrics["review_groups"] = {
         group: compute_metrics([row for row in rows if row["review_group"] == group],
                                len({row["case_id"] for row in rows if row["review_group"] == group}), options.policies)
@@ -252,10 +290,13 @@ def evaluate(options, transport=None):
     comparison_failed = False
     if options.previous:
         try:
-            comparison = compare_run(options.previous, manifest, rows)
+            comparison = compare_run(options.previous, manifest, rows, current_risk_rows=risk_results)
         except (ValueError, OSError, KeyError) as exc:
             comparison = {"status": "incompatible", "reason": str(exc)}
             comparison_failed = True
-    directory = save_run(options.report_dir, options.run_version, manifest, metrics, rows, case_rows, records, comparison)
-    status = 1 if any(not record["request_success"] for record in records) or comparison_failed else 0
+    directory = save_run(options.report_dir, options.run_version, manifest, metrics, rows, case_rows, records,
+                         comparison, risk_results=risk_results, charts=options.charts)
+    status = 1 if (any(not record["request_success"] for record in records) or comparison_failed
+                   or metrics["final_risk"]["failed_cases"]
+                   or manifest.get("charts", {}).get("status") == "failed") else 0
     return metrics, directory, status

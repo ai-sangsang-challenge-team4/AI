@@ -148,6 +148,12 @@ manifest는 다음을 구분한다.
 
 `metadata.evaluationProvenance`에는 실행 서버의 소스 파일 해시, 실제 검색 문서 해시, 검색 설정이 포함된다. 원문이나 검색 문서 자체는 이 메타데이터에 넣지 않는다. 배포 환경에서 `GIT_SHA`, `PROMPT_VERSION`, `RULE_VERSION`, `RAG_VERSION`, `RAG_INDEX_SHA256`을 제공하면 함께 기록한다. 로컬 파일 해시를 원격 배포·RAG 인덱스 해시로 가장하지 않는다. 구버전 서버·오프라인 예측에 없는 실제 설정/배포 정보는 null·빈 목록·미확인 건수로 남긴다. 모델 SDK의 추가 네트워크 호출은 이 메타데이터 생성에 없다.
 
+## 리뷰 보완 사항
+
+생성 옵션에서 temperature를 생략한 클라이언트의 `metadata.temperature`는 추정값 대신 null을 기록한다. 명시한 경우에는 실제 `generationSettings.temperature`와 같은 값을 반환한다. 백엔드의 `Double temperature` 계약도 null을 허용한다.
+
+이전 manifest의 최상위·중첩 구조와 해시를 검증하고, 비교가 불가능해도 현재 결과를 저장한다. 규칙 파일은 최초 읽은 바이트로 파싱과 해시를 함께 계산한다. 공유 최신 스냅샷 게시에는 프로세스 간 파일 잠금을 사용한다. 이 잠금은 macOS/Linux용이며, 여러 파일을 읽는 소비자는 잠금에 참여하거나 `latest.json`이 가리키는 불변 실행 폴더를 사용한다.
+
 ## 남은 계약 / 이번 범위 밖
 
 - 최종 위험도: Backend Risk Engine 요청·응답/버전·공유 임계값 계약과 사례별 4단계 위험도 정답 필요. urgentHumanReview·generation_bucket·THREAT 태그를 위험도 정답으로 변환하지 않는다.

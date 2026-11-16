@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import hashlib
 import math
+import os
 import re
 import time
 from pathlib import Path
@@ -12,7 +13,7 @@ from urllib.request import Request, urlopen
 
 from .contracts import ContractError, build_payload, prediction_tags, read_predictions
 from .data import (BACKEND_CODES, EVALUATED_CODES, FILENAMES, check_disjoint,
-                   json_hash, load_dataset)
+                   file_hash, json_hash, load_dataset)
 from .metrics import compute_metrics, evidence_columns
 from .reporting import REPO_ROOT, build_manifest, compare_run, save_run
 from .supplemental import (SUBTYPES, read_targets, read_backend_predictions, risk_input, risk_rows,
@@ -115,6 +116,8 @@ def evaluate(options, transport=None):
     backend_predictions, backend_artifact = read_backend_predictions(options.risk_predictions, dataset, options.mode)
     if options.risk_predictions and not options.targets:
         raise ValueError("--risk-predictions requires --targets")
+    if options.checkpoint_file and options.predictions:
+        raise ValueError("--checkpoint-file only supports live HTTP evaluation")
     if options.validate_only:
         return {"validated": True, "schema": dataset.schema, "cases": len(dataset.cases),
                 "labels": sum(len(v) for v in dataset.labels.values()), "overlap": overlap,
@@ -138,6 +141,11 @@ def evaluate(options, transport=None):
     if replay is not None and set(replay) - {case["case_id"] for case in dataset.cases}:
         raise ValueError("prediction file contains unknown dataset case_ids")
     transport = transport or post_json
+    checkpoint = Path(options.checkpoint_file) if options.checkpoint_file else None
+    if checkpoint:
+        checkpoint.parent.mkdir(parents=True, exist_ok=True)
+        with checkpoint.open("x", encoding="utf-8"):
+            pass
     rows, case_rows, records = [], [], []
     for index, case in enumerate(cases):
         case_id = case["case_id"]
@@ -216,6 +224,11 @@ def evaluate(options, transport=None):
             record["latency_ms"] = (time.perf_counter() - started) * 1000
         # Even parseable non-object replies may be retained, but never turned into tags.
         records.append(record)
+        if checkpoint:
+            with checkpoint.open("a", encoding="utf-8") as stream:
+                stream.write(json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n")
+                stream.flush()
+                os.fsync(stream.fileno())
         metadata = record["response"].get("metadata", {}) if isinstance(record["response"], dict) else {}
         model = metadata.get("modelName", "") if isinstance(metadata, dict) else ""
         mismatches = 0
@@ -254,6 +267,8 @@ def evaluate(options, transport=None):
         if replay is None and index + 1 < len(cases) and options.sleep:
             time.sleep(options.sleep)
     manifest = build_manifest(dataset, cases, records, options, overlap, rule_sha256=rule_sha256)
+    if checkpoint:
+        manifest["checkpoint"] = {"path": str(checkpoint), "sha256": file_hash(checkpoint)}
     manifest["supplemental_targets"] = target_artifact
     manifest["backend_risk_predictions"] = backend_artifact
     if target_artifact:

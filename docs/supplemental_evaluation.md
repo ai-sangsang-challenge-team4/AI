@@ -90,6 +90,16 @@ python scripts/evaluate_risk_prompt_updated.py --dataset goldenset \
 
 ## 4. 그래프와 검증 범위
 
+중단이 기록 쓰기 도중 발생해 마지막 JSONL이 잘렸다면 먼저 다음 복구 도구를 사용한다. 마지막의 줄바꿈 없는 불완전 기록만 제외하고 제외 여부를 보고한다. 중간 기록의 손상·중복 ID·비유한 숫자는 오류로 처리하며 원본과 기존 출력 파일을 덮어쓰지 않는다. 일반 `--predictions` 파서는 계속 엄격하게 동작한다.
+
+```bash
+python scripts/recover_evaluation_checkpoint.py \
+  --input data/private/live_checkpoint.jsonl \
+  --output data/private/recovered_predictions.jsonl
+```
+
+장시간 실제 실행에는 `--checkpoint-file data/private/live_checkpoint.jsonl`을 함께 지정할 수 있다. 완료된 사례마다 JSONL을 flush·fsync하며 기존 파일은 덮어쓰지 않는다. 이후 요청이나 프로세스가 중단되어도 완료 기록을 보존한다. 이 옵션은 실제 HTTP 실행에서만 지원한다. 복구할 때는 체크포인트의 사례 ID를 `--case-id`로 지정하거나 완료된 앞부분 건수를 `--limit`로 지정해 `--predictions` 입력으로 재평가한다. 이 복구는 추가 모델 호출을 하지 않으며, 미완료 200건을 완료로 표시하지 않는다.
+
 `--charts`는 다음 PNG를 실행 폴더에 저장하고 manifest에 해시를 기록한다.
 
 - `tag_f1.png`: 두 BOUNDARY 정책의 태그별 F1

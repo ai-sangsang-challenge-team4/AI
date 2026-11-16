@@ -62,6 +62,7 @@ def build_parser():
     parser.add_argument("--risk-predictions", help="Backend Risk Engine이 계산한 위험도 JSON")
     parser.add_argument("--write-target-template", metavar="CSV", help="정답을 생성하지 않고 빈 검토 양식 저장; HTTP 호출 없음")
     parser.add_argument("--charts", action="store_true", help="matplotlib로 F1·혼동행렬 PNG 저장")
+    parser.add_argument("--checkpoint-file", help="실제 요청의 완료 기록을 매 사례 JSONL로 동기 저장; 기존 파일 덮어쓰기 금지")
     return parser
 
 

@@ -1,25 +1,25 @@
 from fastapi import FastAPI
+from dotenv import load_dotenv
 
 from app.api.v1.endpoints.ai import router as ai_router
 from app.api.v1.endpoints.rag import router as rag_router
+from app.core.operational_logging import OperationalMiddleware, configure_operational_logging
 
 
-app = FastAPI(
-    title="TeacherHub AI",
-    version="0.1.0"
-)
+def create_app():
+    # Load configuration before lazy retrievers/provider clients are constructed.
+    load_dotenv()
+    configure_operational_logging()
+    application = FastAPI(title="TeacherHub AI", version="0.1.0")
+    application.add_middleware(OperationalMiddleware)
+    application.include_router(rag_router, prefix="/api/v1")
+    application.include_router(ai_router, prefix="/api/v1")
 
-app.include_router(
-    rag_router,
-    prefix="/api/v1"
-)
+    @application.get("/")
+    def root():
+        return {"message": "TeacherHub AI"}
 
-app.include_router(
-    ai_router,
-    prefix="/api/v1"
-)
+    return application
 
 
-@app.get("/")
-def root():
-    return {"message": "TeacherHub AI"}
+app = create_app()

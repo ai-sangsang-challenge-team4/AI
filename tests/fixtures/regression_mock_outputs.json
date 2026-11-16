@@ -1,0 +1,213 @@
+{
+  "kind": "synthetic_mock_responses_not_recorded_model_outputs",
+  "cases": {
+    "DEV002": {
+      "states": {
+        "THREAT": "ABSENT"
+      },
+      "evidence": {}
+    },
+    "DEV003": {
+      "states": {
+        "THREAT": "PRESENT"
+      },
+      "evidence": {
+        "THREAT": [
+          "다리 부러뜨릴 거예요"
+        ]
+      }
+    },
+    "DEV005": {
+      "states": {
+        "UNFAIR_REQUEST": "BOUNDARY",
+        "THREAT": "ABSENT"
+      },
+      "evidence": {
+        "UNFAIR_REQUEST": [
+          "오늘 안으로 확인해 주세요"
+        ]
+      }
+    },
+    "DEV007": {
+      "states": {
+        "LEGAL": "PRESENT",
+        "THREAT": "ABSENT"
+      },
+      "evidence": {
+        "LEGAL": [
+          "교육청 방문 상담"
+        ]
+      }
+    },
+    "DEV008": {
+      "states": {
+        "THREAT": "PRESENT"
+      },
+      "evidence": {
+        "THREAT": [
+          "죽.여.버.린.다"
+        ]
+      }
+    },
+    "DEV009": {
+      "states": {
+        "EXPOSURE": "PRESENT",
+        "THREAT": "PRESENT"
+      },
+      "evidence": {
+        "EXPOSURE": [
+          "유.튜.브에 다 폭로합니다"
+        ],
+        "THREAT": [
+          "유.튜.브에 다 폭로합니다"
+        ]
+      }
+    },
+    "DEV010": {
+      "states": {
+        "THREAT": "ABSENT",
+        "UNFAIR_REQUEST": "ABSENT"
+      },
+      "evidence": {}
+    },
+    "DEV011": {
+      "states": {
+        "THREAT": "PRESENT"
+      },
+      "evidence": {
+        "THREAT": [
+          "교무실에 불 질러 버리겠습니다"
+        ]
+      }
+    },
+    "DEV017": {
+      "states": {
+        "EXPOSURE": "PRESENT",
+        "THREAT": "PRESENT"
+      },
+      "evidence": {
+        "EXPOSURE": [
+          "맘카페에 써서"
+        ],
+        "THREAT": [
+          "오늘까지 사과하세요"
+        ]
+      }
+    },
+    "DEV018": {
+      "states": {
+        "PROFANITY": "PRESENT",
+        "INSULT": "PRESENT",
+        "THREAT": "ABSENT"
+      },
+      "evidence": {
+        "PROFANITY": [
+          "ㄱ ㅐ ㅅ ㅐ ㄲ ㅣ"
+        ],
+        "INSULT": [
+          "ㄱ ㅐ ㅅ ㅐ ㄲ ㅣ 같은 교사"
+        ]
+      }
+    },
+    "DEV019": {
+      "states": {
+        "THREAT": "BOUNDARY",
+        "LEGAL": "PRESENT"
+      },
+      "evidence": {
+        "THREAT": [
+          "서로 곤란해질 텐데"
+        ],
+        "LEGAL": [
+          "교육청까지 가면"
+        ]
+      }
+    },
+    "DEV033": {
+      "states": {
+        "LEGAL": "PRESENT",
+        "THREAT": "ABSENT"
+      },
+      "evidence": {
+        "LEGAL": [
+          "교육청에 문의할 생각입니다"
+        ]
+      }
+    },
+    "DEV037": {
+      "states": {
+        "THREAT": "PRESENT"
+      },
+      "evidence": {
+        "THREAT": [
+          "내일 3교시에 교실로 쳐들어간다"
+        ]
+      }
+    },
+    "DEV040": {
+      "states": {
+        "PROFANITY": "PRESENT",
+        "INSULT": "ABSENT"
+      },
+      "evidence": {
+        "PROFANITY": [
+          "씨1발"
+        ]
+      }
+    },
+    "DEV059": {
+      "states": {
+        "THREAT": "ABSENT"
+      },
+      "evidence": {}
+    },
+    "DEV064": {
+      "states": {
+        "THREAT": "ABSENT"
+      },
+      "evidence": {}
+    },
+    "DEV066": {
+      "states": {
+        "PROFANITY": "BOUNDARY",
+        "THREAT": "ABSENT"
+      },
+      "evidence": {
+        "PROFANITY": [
+          "이 *** 같은 학교"
+        ]
+      }
+    },
+    "DEV069": {
+      "states": {
+        "LEGAL": "PRESENT",
+        "THREAT": "BOUNDARY"
+      },
+      "evidence": {
+        "LEGAL": [
+          "교 육 청 에 신 고 합 니 다"
+        ],
+        "THREAT": [
+          "오늘 안으로 출결 정정 전화 안 주시면요"
+        ]
+      }
+    },
+    "DEV080": {
+      "states": {
+        "THREAT": "ABSENT"
+      },
+      "evidence": {}
+    },
+    "DEV098": {
+      "states": {
+        "PROFANITY": "PRESENT",
+        "INSULT": "ABSENT"
+      },
+      "evidence": {
+        "PROFANITY": [
+          "시 발"
+        ]
+      }
+    }
+  }
+}

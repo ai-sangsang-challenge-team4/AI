@@ -1,0 +1,19 @@
+[
+  {
+    "case_id": "DEV003",
+    "mode": "llm",
+    "response": {
+      "tags": [
+        {"code": "PROFANITY", "state": "ABSENT", "evidenceSpans": []},
+        {"code": "INSULT", "state": "ABSENT", "evidenceSpans": []},
+        {"code": "THREAT", "state": "PRESENT", "evidenceSpans": []},
+        {"code": "LEGAL", "state": "ABSENT", "evidenceSpans": []},
+        {"code": "EXPOSURE", "state": "ABSENT", "evidenceSpans": []},
+        {"code": "REPEAT", "state": "UNKNOWN", "evidenceSpans": []},
+        {"code": "UNFAIR_REQUEST", "state": "ABSENT", "evidenceSpans": []},
+        {"code": "PRIVACY", "state": "ABSENT", "evidenceSpans": []}
+      ],
+      "metadata": {"modelName": "offline-fixture-not-model-performance"}
+    }
+  }
+]

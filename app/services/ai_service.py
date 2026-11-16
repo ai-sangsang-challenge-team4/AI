@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import json
+import math
 
-from app.llm.claude_client import ClaudeLlmClient
-from app.llm.gemini_client import GeminiLlmClient
+from app.core.errors import AiFailure, ErrorCode
+from app.core.operational_logging import record_model
 
-from app.rag.retriever import RagRetriever
-from app.rag.context_example_retriever import ContextExampleRetriever
+from app.core.evaluation_metadata import evaluation_provenance
 
 from app.rag.prompt import (
     RISK_TAG_CODES,
@@ -33,150 +35,106 @@ from app.schemas.support import (
 
 class AiService:
 
-    def __init__(self):
+    def __init__(
+        self, *, retriever=None, example_retriever=None, risk_llm_client=None,
+        context_llm_client=None, revision_llm_client=None, summary_llm_client=None,
+        response_draft_llm_client=None,
+    ):
+        # Lazy imports + injected instances keep offline tests independent of SDKs/keys.
+        if retriever is None:
+            from app.rag.retriever import RagRetriever
+            retriever = RagRetriever()
+        if example_retriever is None:
+            from app.rag.context_example_retriever import ContextExampleRetriever
+            example_retriever = ContextExampleRetriever()
+        if any(client is None for client in (risk_llm_client, context_llm_client, revision_llm_client)):
+            from app.llm.claude_client import ClaudeLlmClient
+            if risk_llm_client is None:
+                risk_llm_client = ClaudeLlmClient(temperature=0.0)
+            if context_llm_client is None:
+                context_llm_client = ClaudeLlmClient()
+            if revision_llm_client is None:
+                revision_llm_client = ClaudeLlmClient()
+        if summary_llm_client is None or response_draft_llm_client is None:
+            from app.llm.gemini_client import GeminiLlmClient
+            if summary_llm_client is None:
+                summary_llm_client = GeminiLlmClient(model="gemini-3.5-flash-lite")
+            if response_draft_llm_client is None:
+                response_draft_llm_client = GeminiLlmClient(model="gemini-3.5-flash-lite")
+        self.retriever = retriever
+        self.example_retriever = example_retriever
+        self.risk_llm_client = risk_llm_client
+        self.context_llm_client = context_llm_client
+        self.revision_llm_client = revision_llm_client
+        self.summary_llm_client = summary_llm_client
+        self.response_draft_llm_client = response_draft_llm_client
 
-        # ====================================================
-        # RAG
-        # ====================================================
+    @staticmethod
+    def _generate(client, prompt):
+        record_model(client.model)
+        try:
+            value = client.generate(prompt)
+        except Exception as exc:
+            # SDK exception messages/causes may contain API keys or request bodies.
+            if isinstance(exc, TimeoutError) or type(exc).__name__ in ("APITimeoutError", "ReadTimeout", "ConnectTimeout"):
+                raise AiFailure(ErrorCode.LLM_TIMEOUT) from None
+            raise AiFailure(ErrorCode.LLM_UNAVAILABLE) from None
+        if not isinstance(value, str):
+            raise AiFailure(ErrorCode.LLM_INVALID_SCHEMA)
+        return value
 
-        # 실제 Chroma + BGE-M3 Retriever
-        self.retriever = RagRetriever()
-
-        # 교사 검토 완료 사례 Retriever
-        self.example_retriever = ContextExampleRetriever()
-
-        # ====================================================
-        # LLM
-        # ====================================================
-
-        # ----------------------------------------------------
-        # Claude
-        # ----------------------------------------------------
-
-        # 위험 요소 분석
-        self.risk_llm_client = ClaudeLlmClient()
-
-        # 문맥 분석
-        self.context_llm_client = ClaudeLlmClient()
-
-        # 학부모용 민원 표현 수정안
-        self.revision_llm_client = ClaudeLlmClient()
-
-        # ----------------------------------------------------
-        # Gemini
-        # ----------------------------------------------------
-
-        # 완충 요약
-        self.summary_llm_client = GeminiLlmClient(
-            model="gemini-3.5-flash-lite"
-        )
-
-        # 교사용 답변 초안
-        self.response_draft_llm_client = GeminiLlmClient(
-            model="gemini-3.5-flash-lite"
-        )
-
-        # ========================================================
-    # Backend /api/v1/ai/analyze
-    #
-    # Backend Rule 기반 1차 탐지 결과를 참고하여
-    # Claude가 민원 문맥 기반 2차 위험 분석을 수행한다.
-    # ========================================================
+    @staticmethod
+    def _search(retriever, text, **kwargs):
+        try:
+            return retriever.search(text, **kwargs)
+        except Exception:
+            raise AiFailure(ErrorCode.RAG_UNAVAILABLE) from None
 
     def analyze(
-        self,
-        complaint: str,
-        rule_results: list[RiskTagResult],
+        self, complaint: str, rule_results: list[RiskTagResult],
     ) -> LlmRiskAnalysisResult:
-
-        # ----------------------------------------------------
-        # 1. 관련 자료 검색
-        # ----------------------------------------------------
-
-        documents = self.retriever.search(
-            complaint,
-            k=3,
-        )
-
-        # ----------------------------------------------------
-        # 2. Rule 탐지 결과 직렬화
-        # ----------------------------------------------------
-
-        rule_results_data = [
-            result.model_dump(
-                exclude_none=True
-            )
-            for result in rule_results
-        ]
-
-        # ----------------------------------------------------
-        # 3. 위험 요소 2차 분석 프롬프트
-        # ----------------------------------------------------
-
-        prompt = build_prompt(
-            complaint=complaint,
-            documents=documents,
-            rule_results=rule_results_data,
-        )
-
-        # ----------------------------------------------------
-        # 4. Claude 호출
-        # ----------------------------------------------------
-
-        response = self.risk_llm_client.generate(
-            prompt
-        )
-
-        # ----------------------------------------------------
-        # 5. JSON 파싱
-        # ----------------------------------------------------
-
-        risk_data = self._parse_json_response(
-            response,
-            error_message=(
-                "위험 요소 분석 LLM이 "
-                "유효한 JSON을 반환하지 않았습니다."
-            ),
-        )
-
-        # ----------------------------------------------------
-        # 6. LLM 응답 형식 정규화
-        #
-        # Claude가 evidenceSpans를 객체 배열 대신
-        # 문자열 배열로 반환하는 경우에도 Backend 계약에 맞게
-        # EvidenceSpan 객체 형태로 변환한다.
-        # ----------------------------------------------------
-
-        risk_data = self._normalize_risk_tag_response(
-            risk_data
-        )
-
-        # ----------------------------------------------------
-        # 7. RiskTagCode 검증
-        # ----------------------------------------------------
-
-        self._validate_risk_tags(
-            risk_data
-        )
-        self._validate_risk_severity(risk_data)
-
-        # ----------------------------------------------------
-        # 8. Backend 계약에 맞는 결과 생성
-        # ----------------------------------------------------
-
-        return LlmRiskAnalysisResult.model_validate(
-            {
-                "tags": risk_data.get(
-                    "tags",
-                    [],
-                ),
-                "metadata": {
-                    "modelName": self.risk_llm_client.model,
-                    "temperature": 0.0,
-                },
-                "safetyFlags": risk_data.get("safetyFlags"),
-            }
-        )
+        documents = self._search(self.retriever, complaint, k=3)
+        rule_data = [result.model_dump(exclude_none=True) for result in rule_results]
+        prompt = build_prompt(complaint=complaint, documents=documents, rule_results=rule_data)
+        # Exactly one retry for invalid output; no synthetic success/default tags.
+        # Timeouts/provider failures are not retried here (SDK retries are disabled).
+        last_code = ErrorCode.LLM_INVALID_SCHEMA
+        for attempt in range(2):
+            try:
+                response = self._generate(self.risk_llm_client, prompt)
+                risk_data = self._parse_json_response(response, error_message="invalid risk JSON")
+                risk_data = self._normalize_risk_tag_response(risk_data)
+                self._validate_risk_tags(risk_data)
+                self._validate_risk_severity(risk_data)
+                # Fail closed. #28's PRESENT -> BOUNDARY repair needs owner agreement.
+                for tag in risk_data["tags"]:
+                    for span in tag["evidenceSpans"]:
+                        if span["text"] not in complaint:
+                            raise AiFailure(ErrorCode.LLM_INVALID_EVIDENCE)
+                        start, end = span.get("start"), span.get("end")
+                        if start is not None or end is not None:
+                            if (type(start) is not int or type(end) is not int
+                                    or not 0 <= start < end <= len(complaint)
+                                    or complaint[start:end] != span["text"]):
+                                raise AiFailure(ErrorCode.LLM_INVALID_EVIDENCE)
+                return LlmRiskAnalysisResult.model_validate({
+                    "tags": risk_data["tags"],
+                    "metadata": {
+                        "modelName": self.risk_llm_client.model,
+                        "temperature": self.risk_llm_client.generation_settings.get("temperature"),
+                        "generationSettings": dict(self.risk_llm_client.generation_settings),
+                        "evaluationProvenance": evaluation_provenance(documents, self.retriever),
+                    },
+                    "safetyFlags": risk_data.get("safetyFlags"),
+                })
+            except AiFailure as exc:
+                if exc.code not in (ErrorCode.LLM_INVALID_JSON, ErrorCode.LLM_INVALID_SCHEMA,
+                                    ErrorCode.LLM_INVALID_EVIDENCE):
+                    raise
+                last_code = exc.code
+            except (ValueError, TypeError, KeyError, AttributeError):
+                last_code = ErrorCode.LLM_INVALID_SCHEMA
+        raise AiFailure(last_code) from None
 
     # ========================================================
     # 내부 기능: 문맥 분석
@@ -194,9 +152,7 @@ class AiService:
         # 1. 과거 교사 검토 사례 검색
         # ----------------------------------------------------
 
-        examples = self.example_retriever.search(
-            complaint
-        )
+        examples = self._search(self.example_retriever, complaint)
 
         # ----------------------------------------------------
         # 2. 기본 프롬프트
@@ -219,9 +175,7 @@ class AiService:
         # 4. Claude 호출
         # ----------------------------------------------------
 
-        response = self.context_llm_client.generate(
-            prompt
-        )
+        response = self._generate(self.context_llm_client, prompt)
 
         # ----------------------------------------------------
         # 5. JSON 파싱
@@ -254,9 +208,7 @@ class AiService:
             complaint
         )
 
-        response = self.summary_llm_client.generate(
-            prompt
-        )
+        response = self._generate(self.summary_llm_client, prompt)
 
         return response.strip()
     
@@ -305,10 +257,7 @@ class AiService:
         # 2. 관련 근거 자료 검색
         # ----------------------------------------------------
 
-        documents = self.retriever.search(
-            content,
-            k=3,
-        )
+        documents = self._search(self.retriever, content, k=3)
 
         # ----------------------------------------------------
         # 3. 답변 초안 프롬프트 생성
@@ -324,11 +273,7 @@ class AiService:
         # 4. Gemini 호출
         # ----------------------------------------------------
 
-        response = (
-            self.response_draft_llm_client
-            .generate(prompt)
-            .strip()
-        )
+        response = self._generate(self.response_draft_llm_client, prompt).strip()
 
         return ResponseDraftResult(
             content=response,
@@ -357,9 +302,7 @@ class AiService:
             request
         )
 
-        response = self.revision_llm_client.generate(
-            prompt
-        )
+        response = self._generate(self.revision_llm_client, prompt)
 
         data = self._parse_json_response(
             response,
@@ -659,7 +602,7 @@ JSON 앞뒤에 설명을 붙이지 마십시오.
         for tag in tags:
 
             if not isinstance(tag, dict):
-                continue
+                raise ValueError("invalid tag shape")
 
             normalized_tag = dict(tag)
 
@@ -712,18 +655,18 @@ JSON 앞뒤에 설명을 붙이지 마십시오.
                                     "end": None,
                                 }
                             )
+                        else:
+                            raise ValueError("empty evidence text")
 
                     elif isinstance(
                         span,
                         dict,
                     ):
 
-                        span_text = str(
-                            span.get(
-                                "text",
-                                "",
-                            )
-                        ).strip()
+                        span_text = span.get("text")
+                        if not isinstance(span_text, str) or not span_text.strip():
+                            raise ValueError("invalid evidence text")
+                        # Keep located evidence verbatim so offsets still address its text.
 
                         if span_text:
                             normalized_spans.append(
@@ -737,6 +680,8 @@ JSON 앞뒤에 설명을 붙이지 마십시오.
                                     ),
                                 }
                             )
+                    else:
+                        raise ValueError("invalid evidence span shape")
 
             elif isinstance(
                 evidence_spans,
@@ -755,6 +700,10 @@ JSON 앞뒤에 설명을 붙이지 마십시오.
                             "end": None,
                         }
                     )
+                else:
+                    raise ValueError("empty evidence text")
+            else:
+                raise ValueError("invalid evidence spans container")
 
             normalized_tag[
                 "evidenceSpans"
@@ -891,61 +840,27 @@ JSON 앞뒤에 설명을 붙이지 마십시오.
         error_message: str,
     ) -> dict:
 
+        if not isinstance(response, str):
+            raise AiFailure(ErrorCode.LLM_INVALID_JSON)
         response = response.strip()
-
-        # ----------------------------------------------------
-        # Markdown 코드블록 제거
-        # ----------------------------------------------------
-
         if response.startswith("```"):
-
-            if response.startswith("```json"):
-                response = response[
-                    len("```json"):
-                ]
-
-            else:
-                response = response[
-                    len("```"):
-                ]
-
+            response = response[len("```json"):] if response.startswith("```json") else response[3:]
             if response.endswith("```"):
-                response = response[
-                    :-len("```")
-                ]
-
+                response = response[:-3]
             response = response.strip()
-
-        # ----------------------------------------------------
-        # JSON 파싱
-        # ----------------------------------------------------
-
         try:
-            data = json.loads(
-                response
-            )
-
-        except json.JSONDecodeError as exc:
-
-            print(
-                "===== LLM INVALID JSON ====="
-            )
-
-            print(response)
-
-            print(
-                "============================"
-            )
-
-            raise ValueError(
-                error_message
-            ) from exc
-
+            def invalid_constant(value):
+                raise ValueError("non-finite JSON constant")
+            def finite_float(value):
+                number = float(value)
+                if not math.isfinite(number):
+                    raise ValueError("non-finite JSON number")
+                return number
+            data = json.loads(response, parse_constant=invalid_constant, parse_float=finite_float)
+        except (ValueError, TypeError):
+            raise AiFailure(ErrorCode.LLM_INVALID_JSON) from None
         if not isinstance(data, dict):
-            raise ValueError(
-                error_message
-            )
-
+            raise AiFailure(ErrorCode.LLM_INVALID_SCHEMA)
         return data
 
     # ========================================================

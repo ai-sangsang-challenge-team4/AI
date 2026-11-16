@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from app.rag.retriever import RagRetriever
+from app.core.errors import AiFailure, ErrorCode
 
 
 router = APIRouter(
@@ -36,12 +36,10 @@ class RagSearchResponse(BaseModel):
 def search(
     request: RagSearchRequest,
 ):
-    retriever = RagRetriever()
-
-    documents = retriever.search(
-        request.query
-    )
-
-    return RagSearchResponse(
-        documents=documents
-    )
+    try:
+        from app.rag.retriever import RagRetriever
+        retriever = RagRetriever()
+        documents = retriever.search(request.query)
+        return RagSearchResponse(documents=documents)
+    except Exception:
+        raise AiFailure(ErrorCode.RAG_UNAVAILABLE) from None

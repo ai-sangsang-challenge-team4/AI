@@ -127,7 +127,7 @@ def read_result_rows(path):
     return rows
 
 
-def compare_run(previous_dir, manifest, rows):
+def compare_run(previous_dir, manifest, rows, *, current_risk_rows=None):
     previous_dir = Path(previous_dir)
     previous = json.loads((previous_dir / "manifest.json").read_text(encoding="utf-8"))
     if not isinstance(previous, dict):
@@ -179,7 +179,7 @@ def compare_run(previous_dir, manifest, rows):
             "tag_f1_delta": {code: delta(after["per_tag"][code]["binary"][policy]["f1"],
                                          before["per_tag"][code]["binary"][policy]["f1"]) for code in EVALUATED_CODES},
         }
-    return {"status": "compared", "controlled_ab": False, "previous_run": str(previous_dir),
+    result = {"status": "compared", "controlled_ab": False, "previous_run": str(previous_dir),
             "paired_successful_case_ids": sorted(paired), "paired_cases": len(paired),
             "excluded_from_pairing": sorted((old_ok | new_ok) - paired),
             "newly_failed_cases": sorted(old_ok & {r["case_id"] for r in rows if not r["request_success"]}),
@@ -189,9 +189,51 @@ def compare_run(previous_dir, manifest, rows):
             "evidence_match_rate_delta": delta(after["evidence"]["match_rate"], before["evidence"]["match_rate"]),
             "before": before, "after": after, "changes": policy_changes,
             "newly_wrong": newly_wrong, "corrected": corrected}
+    from .supplemental import risk_metrics, subtype_metrics
+    result["context_subtypes"] = {
+        "before": subtype_metrics([r for r in old if r["case_id"] in paired], manifest["evaluation"]["positive_policies"]),
+        "after": subtype_metrics([r for r in rows if r["case_id"] in paired], manifest["evaluation"]["positive_policies"]),
+    }
+    context = result["context_subtypes"]
+    context["f1_deltas"] = {
+        code: {subtype: {policy: delta(group["binary"][policy]["f1"],
+                                       context["before"]["per_tag"][code][subtype]["binary"][policy]["f1"])
+                         for policy in manifest["evaluation"]["positive_policies"]}
+               for subtype, group in groups.items()}
+        for code, groups in context["after"]["per_tag"].items()}
+    if current_risk_rows:
+        path = previous_dir / "risk_results.csv"
+        if previous["artifacts"].get(path.name) != file_hash(path):
+            raise ValueError("previous risk_results.csv hash does not match its manifest")
+        with path.open(encoding="utf-8-sig", newline="") as stream:
+            prior_risk = list(csv.DictReader(stream))
+        for row in prior_risk:
+            row["success"] = int(row["success"])
+        old_risk_ok = {r["case_id"] for r in prior_risk if r["success"]}
+        new_risk_ok = {r["case_id"] for r in current_risk_rows if r["success"]}
+        risk_paired = old_risk_ok & new_risk_ok
+        risk_before = [r for r in prior_risk if r["case_id"] in risk_paired]
+        risk_after = [r for r in current_risk_rows if r["case_id"] in risk_paired]
+        old_by_id = {r["case_id"]: r for r in risk_before}
+        result["final_risk"] = {
+            "paired_cases": len(risk_paired), "before": risk_metrics(risk_before), "after": risk_metrics(risk_after),
+            "newly_wrong_case_ids": [r["case_id"] for r in risk_after
+                                     if old_by_id[r["case_id"]]["predicted_risk_level"] == r["gold_risk_level"]
+                                     and r["predicted_risk_level"] != r["gold_risk_level"]],
+            "newly_failed_case_ids": sorted(old_risk_ok & {r["case_id"] for r in current_risk_rows if not r["success"]}),
+            "recovered_case_ids": sorted(new_risk_ok & {r["case_id"] for r in prior_risk if not r["success"]}),
+            "excluded_from_pairing": sorted((old_risk_ok | new_risk_ok) - risk_paired),
+        }
+        before_risk, after_risk = result["final_risk"]["before"], result["final_risk"]["after"]
+        result["final_risk"]["deltas"] = {
+            "class_recall": {level: delta(after_risk["class_recall"][level]["recall"], before_risk["class_recall"][level]["recall"])
+                             for level in ("HIGH", "EMERGENCY")},
+            "high_or_emergency_recall": delta(after_risk["high_or_emergency_recall"], before_risk["high_or_emergency_recall"]),
+            "legitimate_overestimation_rate": delta(after_risk["legitimate_overestimation"]["rate"], before_risk["legitimate_overestimation"]["rate"])}
+    return result
 
 
-def save_run(report_root, version, manifest, metrics, rows, cases, records, comparison=None):
+def save_run(report_root, version, manifest, metrics, rows, cases, records, comparison=None, *, risk_results=None, charts=False):
     # Version labels are display values; never allow them to become path components.
     safe_version = "".join(c if c.isalnum() or c in "-_" else "_" for c in version)[:64] or "eval"
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ") + "_" + safe_version + "_" + uuid4().hex[:8]
@@ -212,6 +254,14 @@ def save_run(report_root, version, manifest, metrics, rows, cases, records, comp
         fields = list(cases[0]) if name == "failures.csv" and cases else list(rows[0]) if "mismatches" in name and rows else None
         write_csv(directory / name, content, fields)
     write_json(directory / "metrics.json", metrics)
+    write_csv(directory / "risk_results.csv", risk_results or [],
+              ["case_id", "gold_risk_level", "predicted_risk_level", "is_legitimate", "success", "error"])
+    write_csv(directory / "risk_mismatches.csv", [r for r in risk_results or []
+              if r["success"] and r["gold_risk_level"] != r["predicted_risk_level"]],
+              ["case_id", "gold_risk_level", "predicted_risk_level", "is_legitimate", "success", "error"])
+    write_csv(directory / "emergency_misses.csv", [r for r in risk_results or []
+              if r["success"] and r["gold_risk_level"] == "EMERGENCY" and r["predicted_risk_level"] != "EMERGENCY"],
+              ["case_id", "gold_risk_level", "predicted_risk_level", "is_legitimate", "success", "error"])
     core_rows = [r for r in rows if r.get("review_required") == "NO"]
     core = compute_metrics(core_rows, len(cases))
     review_rows = [r for r in rows if r.get("review_required") == "YES"
@@ -248,10 +298,24 @@ def save_run(report_root, version, manifest, metrics, rows, cases, records, comp
     with (directory / "predictions.jsonl").open("w", encoding="utf-8") as stream:
         for record in records:
             stream.write(json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n")
+    with (directory / "backend_inputs.jsonl").open("w", encoding="utf-8") as stream:
+        for record in records:
+            if record["request_success"]:
+                value = {key: record[key] for key in ("case_id", "mode", "risk_input_sha256", "risk_input")}
+                value["dataset_sha256"] = manifest["dataset"]["sha256"]
+                stream.write(json.dumps(value, ensure_ascii=False, allow_nan=False) + "\n")
     if comparison:
         write_json(directory / "diff.json", comparison)
         write_csv(directory / "newly_wrong.csv", comparison.get("newly_wrong", []),
                   ["case_id", "code", "gold_state", "previous_state", "current_state"])
+    if charts:
+        from .charts import render_charts
+        try:
+            render_charts(directory, metrics, manifest)
+            manifest["charts"] = {"status": "generated", "files": sorted(p.name for p in directory.glob("*.png"))}
+        except Exception:
+            # Rendering must never discard a completed, potentially paid evaluation.
+            manifest["charts"] = {"status": "failed", "error_code": "chart_generation_failed"}
     manifest["artifacts"] = {p.name: file_hash(p) for p in directory.iterdir() if p.is_file()}
     write_json(directory / "manifest.json", manifest)
     # Keep original fixed filenames as a latest snapshot for existing consumers.

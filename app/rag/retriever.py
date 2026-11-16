@@ -13,6 +13,25 @@ DEFAULT_SEARCH_K = 10
 DEFAULT_MAX_PER_SOURCE = 2
 
 
+def is_low_quality_chunk(content: str) -> bool:
+    """검색 근거로 활용하기 어려운 빈 내용, 쪽 번호, 표지 제거."""
+    text = " ".join(content.split())
+
+    if not text:
+        return True
+
+    if text.isdecimal():
+        return True
+
+    titles = {
+        "학교민원 처리 매뉴얼",
+        "학교민원 처리 매뉴얼 학교민원 처리 매뉴얼",
+        "학교민원 처리 기본 원칙 및 절차",
+    }
+
+    return text in titles
+
+
 class RagRetriever:
 
     def __init__(
@@ -72,7 +91,7 @@ class RagRetriever:
 
             content = document.page_content.strip()
 
-            if not content:
+            if is_low_quality_chunk(content):
                 continue
 
             # 동일 chunk 중복 제거

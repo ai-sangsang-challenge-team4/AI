@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import socket
 from collections import Counter
 from pathlib import Path
@@ -52,10 +53,24 @@ def pytest_sessionfinish(session, exitstatus):
     outcomes = Counter(config._safe_results.values())
     core = Counter(result for node, result in config._safe_results.items()
                    if "test_regression_core20.py::test_core_case[" in node)
+    groups = {name: dict(Counter(result for node, result in config._safe_results.items() if filename in node))
+              for name, filename in (("guardrails", "test_guardrails.py::"),
+                                     ("operational_logs", "test_operational_logging.py::"))}
     value = {"schema_version": 1, "kind": "offline_contract_validation_not_model_quality",
              "exit_code": int(exitstatus), "duration_seconds": round(perf_counter() - config._safe_started, 3),
              "tests": {key: outcomes[key] for key in ("passed", "failed", "skipped", "xfailed", "xpassed")},
-             "core20": dict(core), "contains_raw_cases_or_responses": False}
+             "core20": dict(core), "groups": groups, "contains_raw_cases_or_responses": False}
     destination = Path(config.getoption("--aggregate-report"))
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+
+
+def pytest_terminal_summary(terminalreporter):
+    # Only fixed development IDs reach this line, never assertion values or model text.
+    failed = []
+    for node, outcome in terminalreporter.config._safe_results.items():
+        match = re.search(r"test_regression_core20\.py::test_core_case\[(DEV[0-9]{3})\]$", node)
+        if match and outcome in ("failed", "xpassed"):
+            failed.append(match[1])
+    if failed:
+        terminalreporter.write_line("CORE20_FAILED: " + " ".join(sorted(set(failed))))

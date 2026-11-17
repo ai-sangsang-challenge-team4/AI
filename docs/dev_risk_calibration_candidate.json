@@ -3,7 +3,7 @@
   "kind": "development_prompt_candidate_not_validated_improvement",
   "prompt_version": "risk-dev-privacy-v1",
   "candidate_source_sha256": {
-    "app/rag/prompt.py": "5d036c586e774e7990519d7d43ba9251f78d127ee76e65b6ae6ce1e758aef1ef",
+    "app/rag/prompt.py": "765753606a3acde7c9663c645dde136c12bf992b7a10a261fe7d9a35b1432071",
     "app/core/evaluation_metadata.py": "37f7f12376129e48aee46f672085b1e746cfb90b23947142338b002479465d97"
   },
   "tuning_data_sha256": {

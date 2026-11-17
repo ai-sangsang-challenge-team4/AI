@@ -2,6 +2,10 @@
 
 기존 진입점은 `scripts/evaluate_risk_prompt_updated.py`다. `scripts/evaluation/`에 데이터 어댑터·계약·지표·실행·저장을 분리했다. Python 표준 라이브러리만으로 검증·저장 예측 평가·테스트가 가능하며, 평가기 import는 FastAPI·검색기·모델 SDK를 로딩하지 않는다.
 
+이 문서의 HTTP 예시는 AI 서버 직접 호출 기준이다. EC2 접속 없이 공개 Backend의
+초안·분석 API로 실행하려면 [공개 Backend 평가 가이드](backend_evaluation.md)를 따른다.
+해당 가이드에 실제 200건 태깅 결과와 독립 LLM-only·최종 위험도 평가의 제한을 기록했다.
+
 ## 실행
 
 저장소 루트에서 실행한다. 다음 명령은 외부 호출을 하지 않는다.

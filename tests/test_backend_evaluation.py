@@ -86,6 +86,43 @@ class BackendCaptureTests(unittest.TestCase):
         stages = [json.loads(line).get('stage') for line in journal.path.read_text().splitlines()[1:]]
         self.assertEqual(stages, ['creating', 'draft', 'analyzing', 'analyzed', 'complete'])
 
+    def test_development_mode_captures_and_replays_dev_without_sending_labels(self):
+        dataset = load_dataset('data/dev', 'dev')
+        case = dataset.cases[0]
+        client = FakeClient(case)
+        credentials = self.root / 'credentials.json'
+        credentials.write_text(json.dumps({'email': FakeClient.email, 'password': 'synthetic-only'}))
+        command = ['--dataset', 'dev', '--capture-dir', str(self.root / 'dev-capture'),
+                   '--report-dir', str(self.root / 'dev-reports'), '--limit', '1',
+                   '--credentials-file', str(credentials), '--run-version', 'dev-before']
+        with patch('scripts.evaluate_backend_goldenset.BackendClient', return_value=client), \
+                patch.object(client, 'context', return_value=self.context, create=True):
+            self.assertEqual(main(command), 0)
+        self.assertEqual(client.calls[0][2]['content'], case['message_text'])
+        self.assertEqual(set(client.calls[0][2]), {'studentId', 'teacherId', 'title', 'content'})
+        index = json.loads((self.root / 'dev-capture/report_index.json').read_text())
+        self.assertEqual(index['dataset_schema'], 'dev')
+        final = json.loads((Path(index['reports']['final']) / 'manifest.json').read_text())
+        self.assertEqual(final['dataset_schema'], 'dev')
+        self.assertIn('development complaint only', final['backend_capture']['input_scope'])
+        self.assertEqual(final['backend_capture']['gold_standard_acceptance']['status'], 'dataset_metadata')
+        lines = (self.root / 'dev-capture/checkpoint.jsonl').read_text().splitlines()
+        self.assertEqual(json.loads(lines[0])['case_ids'], [case['case_id']])
+        self.assertTrue(case['case_id'].startswith('DEV'))
+        with patch('scripts.evaluate_backend_goldenset.BackendClient') as no_network:
+            self.assertEqual(main(command + ['--replay-only']), 0)
+            no_network.assert_not_called()
+            self.assertEqual(main(command + ['--replay-only', '--previous-final', index['reports']['final']]), 0)
+            compared = json.loads((self.root / 'dev-capture/report_index.json').read_text())
+            diff = json.loads((Path(compared['reports']['final']) / 'diff.json').read_text())
+            self.assertEqual(diff['paired_cases'], 1)
+            self.assertEqual(diff['previous_run'], index['reports']['final'])
+            no_network.assert_not_called()
+            with self.assertRaisesRegex(ValueError, 'dataset/selection differs'):
+                wrong = list(command)
+                wrong[1] = 'goldenset'
+                main(wrong + ['--replay-only'])
+
     def test_resume_complete_never_repeats_any_request(self):
         journal = self.journal()
         Collector(self.client, journal, self.dataset, self.context, 'test').collect_one(self.case)
@@ -410,6 +447,33 @@ class BackendCaptureTests(unittest.TestCase):
 
 
 class BackendTransportTests(unittest.TestCase):
+    def test_dev_cannot_claim_golden_approval_or_compare_another_dataset_before_login(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            previous = root / 'previous'
+            previous.mkdir()
+            (previous / 'manifest.json').write_text(json.dumps({
+                'backend_capture': {'prediction_view': 'final'}, 'dataset': {'sha256': '0' * 64}}))
+            for extra in (['--gold-standard-status', 'team_approved'], ['--previous-final', str(previous)]):
+                with self.subTest(extra=extra), patch('scripts.evaluate_backend_goldenset.BackendClient') as client:
+                    with self.assertRaises(ValueError):
+                        main(['--dataset', 'dev', '--capture-dir', str(root / 'capture'), *extra])
+                    client.assert_not_called()
+
+    def test_malformed_previous_manifest_is_a_safe_preflight_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            previous = Path(directory) / 'previous'
+            previous.mkdir()
+            for value in (None, [], {'backend_capture': None},
+                          {'backend_capture': {'prediction_view': 'final'}, 'dataset': None},
+                          {'backend_capture': {'prediction_view': 'final'}, 'dataset': []}):
+                with self.subTest(value=value), patch('scripts.evaluate_backend_goldenset.BackendClient') as client:
+                    (previous / 'manifest.json').write_text(json.dumps(value))
+                    with self.assertRaises(ValueError):
+                        main(['--dataset', 'dev', '--capture-dir', str(Path(directory) / 'capture'),
+                              '--previous-final', str(previous)])
+                    client.assert_not_called()
+
     def test_authentication_then_durable_intent_then_post_without_a_second_login(self):
         client = BackendClient('https://backend.invalid', 'user', 'synthetic-password')
         events = []

@@ -2,16 +2,19 @@
 import copy
 import io
 import json
+import runpy
 import tempfile
 import threading
 import unittest
 from pathlib import Path
+from contextlib import redirect_stderr
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError, URLError
 
 from scripts.evaluation.backend import (BackendClient, BackendError, Collector, Journal,
-                                        captured_risk_rows, capture_header, export_capture, validate_capture)
+                                        captured_risk_rows, capture_header, export_capture, validate_capture,
+                                        validate_checkpoint_inputs)
 from scripts.evaluation.data import BACKEND_CODES, json_hash, load_dataset
 from scripts.evaluate_backend_goldenset import build_parser, make_reports, main
 
@@ -37,7 +40,9 @@ class FakeClient:
     def __init__(self, case, fail_analysis=False):
         self.case, self.calls, self.fail_analysis = case, [], fail_analysis
 
-    def call(self, method, path, payload=None):
+    def call(self, method, path, payload=None, *, before_send=None):
+        if before_send is not None:
+            before_send()
         self.calls.append((method, path, payload))
         if path == '/complaints' and method == 'POST':
             return {'complaintId': 7}
@@ -116,6 +121,70 @@ class BackendCaptureTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'ambiguous POST'):
             collector.collect_one(self.case)
         self.assertEqual(self.client.calls, [])
+
+    def test_auth_refresh_failure_before_create_leaves_no_post_intent(self):
+        self.check_auth_failure_resume('creating')
+
+    def test_auth_refresh_failure_before_analysis_preserves_created_draft(self):
+        self.check_auth_failure_resume('analyzing')
+
+    def check_auth_failure_resume(self, failed_stage):
+        journal = self.journal()
+        remote = BackendClient(self.client.base_url, FakeClient.email, 'synthetic-password')
+        fail_auth = True
+
+        def request(method, path, payload=None, token=None):
+            if path == '/auth/login':
+                if fail_auth and (failed_stage == 'creating' or self.client.calls):
+                    raise BackendError('backend:http_503')
+                return {'accessToken': 'synthetic-token', 'expiresIn': 3600}
+            result = self.client.call(method, path, payload)
+            if path == '/complaints' and failed_stage == 'analyzing':
+                remote.expiry = 0  # Expire the token between the two mutation requests.
+            return result
+
+        collector = Collector(remote, journal, self.dataset, self.context, 'auth-test')
+        with patch.object(remote, '_request', side_effect=request):
+            with self.assertRaisesRegex(BackendError, 'backend:http_503'):
+                collector.collect_one(self.case)
+            if failed_stage == 'creating':
+                self.assertEqual(journal.states, {})
+                self.assertEqual(self.client.calls, [])
+            else:
+                self.assertEqual(journal.states['G001']['stage'], 'draft')
+                self.assertEqual(journal.states['G001']['complaintId'], 7)
+                self.assertEqual([call[:2] for call in self.client.calls], [('POST', '/complaints')])
+            # Resume from the durable journal after authentication recovers.
+            journal.close()
+            resumed = self.journal(resume=True)
+            fail_auth = False
+            result = Collector(remote, resumed, self.dataset, self.context, 'auth-test').collect_one(self.case)
+        self.assertEqual(result['stage'], 'complete')
+        self.assertEqual(sum(method == 'POST' and path == '/complaints' for method, path, _ in self.client.calls), 1)
+        self.assertEqual(sum(method == 'POST' and path.endswith('/risk-analysis') for method, path, _ in self.client.calls), 1)
+
+    def test_cli_shows_actual_checkpoint_errors_without_claiming_a_post_was_sent(self):
+        journal = self.journal()
+        errors = []
+        try:
+            Journal(journal.path, self.header, resume=True)
+        except ValueError as error:
+            errors.append(error)
+        journal.close()
+        try:
+            Journal(journal.path, self.header)
+        except ValueError as error:
+            errors.append(error)
+        try:
+            validate_checkpoint_inputs({'G001': {'complaint_sha256': 'wrong'}}, [self.case])
+        except ValueError as error:
+            errors.append(error)
+        self.assertEqual(len(errors), 3)
+        for error in errors:
+            status, output = run_cli_failure(error)
+            self.assertEqual(status, 2)
+            self.assertIn(str(error), output)
+            self.assertNotIn('POST', output)
 
     def test_resume_after_summary_only_fetches_details(self):
         journal = self.journal()
@@ -341,6 +410,55 @@ class BackendCaptureTests(unittest.TestCase):
 
 
 class BackendTransportTests(unittest.TestCase):
+    def test_authentication_then_durable_intent_then_post_without_a_second_login(self):
+        client = BackendClient('https://backend.invalid', 'user', 'synthetic-password')
+        events = []
+        def login():
+            events.append('auth')
+            client.token = 'synthetic-token'
+        def intent():
+            events.append('intent')
+            client.expiry = 0
+        def request(*args):
+            events.append('post')
+            self.assertEqual(args[-1], 'synthetic-token')
+            return {'complaintId': 7}
+        with patch.object(client, 'login', side_effect=login), patch.object(client, '_request', side_effect=request):
+            client.call('POST', '/complaints', {}, before_send=intent)
+        self.assertEqual(events, ['auth', 'intent', 'post'])
+
+    def test_failed_intent_write_prevents_mutation_request(self):
+        client = BackendClient('https://backend.invalid', 'user', 'synthetic-password')
+        with patch.object(client, 'login'), patch.object(client, '_request') as request:
+            with self.assertRaises(OSError):
+                client.call('POST', '/complaints', {}, before_send=MagicMock(side_effect=OSError('write failed')))
+            request.assert_not_called()
+
+    def test_cli_shows_authentication_and_safe_context_errors(self):
+        client = BackendClient('https://backend.invalid', 'user', 'synthetic-password')
+        errors = [BackendError('backend:http_401')]
+        for responses in ([{'role': 'PARENT', 'students': []}],
+                          [{'role': 'PARENT', 'students': [{'studentId': 1}]}, [{'teacherId': 1}, {'teacherId': 2}]]):
+            with patch.object(client, 'call', side_effect=responses):
+                try:
+                    client.context()
+                except ValueError as error:
+                    errors.append(error)
+        self.assertEqual(len(errors), 3)
+        for error in errors:
+            status, output = run_cli_failure(error)
+            self.assertEqual(status, 2)
+            self.assertIn(str(error), output)
+
+    def test_cli_never_echoes_arbitrary_value_or_file_errors(self):
+        secret = 'RAW_ERROR_sk-SECRET_CANARY'
+        for error in (ValueError(secret), json.JSONDecodeError(secret, secret, 0), OSError(secret), KeyError(secret)):
+            with self.subTest(kind=type(error).__name__):
+                status, output = run_cli_failure(error)
+                self.assertEqual(status, 2)
+                self.assertNotIn(secret, output)
+                self.assertNotIn('POST', output)
+
     def test_context_rejects_wrong_role_and_unowned_student_before_mutations(self):
         client = BackendClient('https://backend.invalid', 'user', 'secret')
         with patch.object(client, 'call', return_value={'role': 'TEACHER'}) as call:
@@ -377,6 +495,18 @@ class BackendTransportTests(unittest.TestCase):
         for url in ('http://example.com', 'https://user:password@example.com', 'https://example.com?key=value'):
             with self.subTest(url=url), self.assertRaises(ValueError):
                 BackendClient(url, 'user', 'secret')
+
+
+def run_cli_failure(error):
+    output = io.StringIO()
+    path = Path(__file__).parents[1] / 'scripts/evaluate_backend_goldenset.py'
+    with patch('sys.argv', [str(path), '--capture-dir', 'unused']), \
+            patch('scripts.evaluation.data.load_dataset', side_effect=error), redirect_stderr(output):
+        try:
+            runpy.run_path(str(path), run_name='__main__')
+        except SystemExit as stopped:
+            return stopped.code, output.getvalue()
+    raise AssertionError('CLI did not exit')
 
 
 if __name__ == '__main__':

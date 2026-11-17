@@ -13,7 +13,7 @@ if __package__ in (None, ''):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.evaluate_risk_prompt_updated import build_parser as evaluation_parser
-from scripts.evaluation.backend import (BackendClient, BackendError, Collector, Journal,
+from scripts.evaluation.backend import (BackendClient, BackendError, BackendInputError, Collector, Journal,
                                         capture_header, export_capture)
 from scripts.evaluation.charts import check_available
 from scripts.evaluation.data import check_disjoint, load_dataset
@@ -50,7 +50,7 @@ def validate_previous(args):
     if args.previous_final:
         previous = json.loads((args.previous_final / 'manifest.json').read_text())
         if previous.get('backend_capture', {}).get('prediction_view') != 'final':
-            raise ValueError('--previous-final requires a final-view Backend report')
+            raise BackendInputError('--previous-final requires a final-view Backend report')
 
 
 def make_reports(args, dataset, cases, journal, states, capture_manifest):
@@ -104,11 +104,11 @@ def main(argv=None):
     dataset = load_dataset('data/goldenset', 'goldenset')
     dev = load_dataset('data/dev', 'dev')
     if not check_disjoint(dataset.cases, dev.cases)['passed']:
-        raise ValueError('dev/gold overlap detected')
+        raise BackendInputError('dev/gold overlap detected')
     if args.limit is not None and args.limit < 1:
-        raise ValueError('--limit must be positive')
+        raise BackendInputError('--limit must be positive')
     if args.retry_fallbacks and (not args.resume or args.replay_only):
-        raise ValueError('--retry-fallbacks requires live --resume')
+        raise BackendInputError('--retry-fallbacks requires live --resume')
     read_targets(args.targets, dataset)
     validate_previous(args)
     if args.charts:
@@ -118,7 +118,7 @@ def main(argv=None):
         header = json.loads((args.capture_dir / 'checkpoint.jsonl').read_text().splitlines()[0])
         expected_ids = [case['case_id'] for case in cases]
         if header.get('dataset_sha256') != dataset.digest or header.get('case_ids') != expected_ids:
-            raise ValueError('Capture dataset/selection differs')
+            raise BackendInputError('Capture dataset/selection differs')
         journal = Journal(args.capture_dir / 'checkpoint.jsonl', header, resume=True)
         failure_path = args.capture_dir / 'capture_failures.json'
         failures = json.loads(failure_path.read_text()) if failure_path.exists() else []
@@ -158,6 +158,10 @@ def main(argv=None):
 if __name__ == '__main__':
     try:
         sys.exit(main())
-    except (BackendError, ValueError, OSError, KeyError):
-        print('Backend evaluation stopped. Check the capture checkpoint; no POST is retried automatically.', file=sys.stderr)
+    except (BackendError, BackendInputError) as error:
+        print(f'Backend evaluation stopped: {error}', file=sys.stderr)
+        sys.exit(2)
+    except (ValueError, OSError, KeyError):
+        # General validators may interpolate CSV cells, file paths or arbitrary JSON values.
+        print('Backend evaluation stopped. Check the input files and capture settings.', file=sys.stderr)
         sys.exit(2)

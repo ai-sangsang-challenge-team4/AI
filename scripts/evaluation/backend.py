@@ -32,6 +32,10 @@ class BackendError(RuntimeError):
     """A stable error code, never an HTTP body or upstream exception."""
 
 
+class BackendInputError(ValueError):
+    """A fixed, user-actionable message; never interpolate external values."""
+
+
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
@@ -44,9 +48,9 @@ class BackendClient:
                 or url.username or url.password or url.query or url.fragment
                 or url.path not in ('', '/')
                 or (url.scheme != 'https' and url.hostname not in ('localhost', '127.0.0.1'))):
-            raise ValueError('Backend URL must be an HTTPS origin (HTTP only for localhost)')
+            raise BackendInputError('Backend URL must be an HTTPS origin (HTTP only for localhost)')
         if not email or not password or not math.isfinite(timeout) or timeout <= 0:
-            raise ValueError('Credentials and a positive finite timeout are required')
+            raise BackendInputError('Credentials and a positive finite timeout are required')
         self.base_url = base_url.rstrip('/')
         self.email, self.password, self.timeout = email, password, timeout
         self.opener = opener or build_opener(NoRedirect())
@@ -88,8 +92,11 @@ class BackendClient:
             self.token = session['accessToken']
             self.expiry = time.monotonic() + max(1, seconds - 30)
 
-    def call(self, method, path, payload=None):
+    def call(self, method, path, payload=None, *, before_send=None):
         self.login()
+        # Authenticate before a durable mutation intent; never refresh again after it.
+        if before_send is not None:
+            before_send()
         return self._request(method, path, payload, self.token)
 
     def context(self, student_id=None, teacher_id=None):
@@ -100,10 +107,10 @@ class BackendClient:
         ids = [s.get('studentId') for s in students if isinstance(s, dict)]
         if student_id is None:
             if len(ids) != 1:
-                raise ValueError('Specify --student-id when the account does not have exactly one student')
+                raise BackendInputError('Specify --student-id when the account does not have exactly one student')
             student_id = ids[0]
         if type(student_id) is not int or student_id <= 0 or student_id not in ids:
-            raise ValueError('Student does not belong to this account')
+            raise BackendInputError('Student does not belong to this account')
         teachers = self.call('GET', f'/complaints/recipients?studentId={student_id}')
         if not isinstance(teachers, list):
             raise BackendError('backend:invalid_recipient_response')
@@ -113,10 +120,10 @@ class BackendClient:
             homeroom = [t for t in teachers if t.get('homeroomTeacher') is True]
             candidates = homeroom if len(homeroom) == 1 else teachers
             if len(candidates) != 1:
-                raise ValueError('Specify --teacher-id when there is no unique homeroom teacher')
+                raise BackendInputError('Specify --teacher-id when there is no unique homeroom teacher')
             teacher_id = candidates[0].get('teacherId')
         if type(teacher_id) is not int or teacher_id <= 0 or teacher_id not in [t.get('teacherId') for t in teachers]:
-            raise ValueError('Teacher is not an available recipient for this student')
+            raise BackendInputError('Teacher is not an available recipient for this student')
         return {'student_id': student_id, 'teacher_id': teacher_id, 'account_sha256': json_hash(self.email)}
 
 
@@ -167,12 +174,12 @@ class Journal:
             fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             self.lock.close()
-            raise ValueError('This capture is already running') from None
+            raise BackendInputError('This capture is already running') from None
         self.mutex, self.states = threading.Lock(), {}
         if self.path.exists():
             if not resume:
                 self.close()
-                raise ValueError('Existing checkpoint requires --resume')
+                raise BackendInputError('Existing checkpoint requires --resume')
             try:
                 lines = self.path.read_text(encoding='utf-8').splitlines()
                 items = [json.loads(line) for line in lines]
@@ -189,7 +196,7 @@ class Journal:
                     self.states[case_id] = item
             except (ValueError, KeyError, ContractError):
                 self.close()
-                raise ValueError('Checkpoint invalid; restore it without repeating POST requests') from None
+                raise BackendInputError('Checkpoint invalid; restore it without repeating POST requests') from None
         else:
             with self.path.open('x', encoding='utf-8') as stream:
                 stream.write(json.dumps(header, ensure_ascii=False, allow_nan=False) + '\n')
@@ -237,18 +244,18 @@ class Collector:
         case_id = value.get('case_id')
         cases = {case['case_id']: case for case in self.dataset.cases}
         if value.get('dataset_sha256') != self.dataset.digest or case_id not in cases:
-            raise ValueError('Smoke capture belongs to a different dataset')
+            raise BackendInputError('Smoke capture belongs to a different dataset')
         if case_id not in self.journal.header['case_ids']:
-            raise ValueError('Smoke capture is outside the selected case selection')
+            raise BackendInputError('Smoke capture is outside the selected case selection')
         if value.get('base_url') != self.client.base_url or value.get('complaint_sent') is not False:
-            raise ValueError('Only an unsent smoke capture from this Backend can be reused')
+            raise BackendInputError('Only an unsent smoke capture from this Backend can be reused')
         if case_id in self.journal.states:
             return
         validate_capture(value)
         owned = self.client.call('GET', f"/complaints/{value['complaintId']}")
         if (not isinstance(owned, dict) or owned.get('content') != cases[case_id]['message_text']
                 or owned.get('status') != 'DRAFT' or owned.get('studentId') != self.context['student_id']):
-            raise ValueError('Smoke capture is not an owned, matching evaluation draft')
+            raise BackendInputError('Smoke capture is not an owned, matching evaluation draft')
         record = {key: value[key] for key in ('case_id', 'complaintId', 'latency_ms', 'summary', 'detectorResults')}
         record.update(stage='complete', complaint_sha256=json_hash(cases[case_id]['message_text']),
                       capture_source='previous_smoke', seed_sha256=file_hash(path), complaint_sent=False)
@@ -259,17 +266,17 @@ class Collector:
         state = dict(self.journal.states.get(case_id, {}))
         digest = json_hash(case['message_text'])
         if state and state.get('complaint_sha256') != digest:
-            raise ValueError('Checkpoint complaint input differs')
+            raise BackendInputError('Checkpoint complaint input differs')
         if state.get('stage') == 'complete':
             return state
         if state.get('stage') in ('creating', 'analyzing'):
             raise ValueError(f'{case_id}: ambiguous POST; inspect the existing draft before retrying')
         if not state or state.get('stage') == 'retry_ready':
             state = {**state, 'case_id': case_id, 'complaint_sha256': digest, 'stage': 'creating'}
-            self.journal.append(state)
             payload = {'studentId': self.context['student_id'], 'teacherId': self.context['teacher_id'],
                        'title': f'[평가 {self.run_version[:40]}] {case_id}', 'content': case['message_text']}
-            created = self.client.call('POST', '/complaints', payload)
+            created = self.client.call('POST', '/complaints', payload,
+                                       before_send=lambda: self.journal.append(state))
             complaint_id = created.get('complaintId') if isinstance(created, dict) else None
             if type(complaint_id) is not int or complaint_id <= 0:
                 raise BackendError('backend:invalid_created_draft')
@@ -277,15 +284,15 @@ class Collector:
             self.journal.append(state)
         if state['stage'] == 'draft':
             state.update(stage='analyzing', analysis_started_at=datetime.now(timezone.utc).isoformat())
-            self.journal.append(state)
             started = time.perf_counter()
-            summary = self.client.call('POST', f"/complaints/{state['complaintId']}/risk-analysis")
+            summary = self.client.call('POST', f"/complaints/{state['complaintId']}/risk-analysis",
+                                       before_send=lambda: self.journal.append(state))
             if not isinstance(summary, dict) or type(summary.get('analysisId')) is not int:
                 raise BackendError('backend:invalid_analysis_summary')
             state.update(stage='analyzed', summary=summary, latency_ms=(time.perf_counter() - started) * 1000)
             self.journal.append(state)
         if state['stage'] != 'analyzed':
-            raise ValueError('Invalid checkpoint stage')
+            raise BackendInputError('Invalid checkpoint stage')
         details = self.client.call('GET', f"/risk-analyses/{state['summary']['analysisId']}/detector-results")
         state.update(stage='complete', detectorResults=details, captured_at=datetime.now(timezone.utc).isoformat(),
                      capture_source='public_backend', complaint_sent=False)
@@ -295,7 +302,7 @@ class Collector:
 
     def collect(self, cases, *, workers=1, progress=None):
         if workers not in (1, 2):
-            raise ValueError('Use one or two workers')
+            raise BackendInputError('Use one or two workers')
         validate_checkpoint_inputs(self.journal.states, cases)
         pending = iter(case for case in cases if self.journal.states.get(case['case_id'], {}).get('stage') != 'complete')
         failures, completed, consecutive_fallbacks = [], 0, 0
@@ -346,7 +353,7 @@ def validate_checkpoint_inputs(states, cases):
     for case in cases:
         state = states.get(case['case_id'])
         if state is not None and state.get('complaint_sha256') != json_hash(case['message_text']):
-            raise ValueError('Checkpoint complaint input differs')
+            raise BackendInputError('Checkpoint complaint input differs')
 
 
 def captured_risk_rows(targets, states, selected_ids):

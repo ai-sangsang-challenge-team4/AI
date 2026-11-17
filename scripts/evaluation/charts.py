@@ -15,6 +15,9 @@ def render_charts(directory, metrics, manifest):
     import matplotlib.pyplot as plt
 
     context = f"{manifest['execution']} | successful {metrics['coverage']['succeeded_cases']}/{metrics['coverage']['requested_cases']} cases"
+    capture = manifest.get('backend_capture')
+    if capture:
+        context = f"Backend {capture['prediction_view']} | {capture['capture_status']} | " + context
     names = list(metrics["per_tag"])
     policies = list(metrics["binary"])
     fig, ax = plt.subplots(figsize=(11, 5), layout="constrained")

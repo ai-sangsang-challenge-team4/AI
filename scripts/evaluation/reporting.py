@@ -240,7 +240,7 @@ def save_run(report_root, version, manifest, metrics, rows, cases, records, comp
     directory = Path(report_root) / run_id
     directory.mkdir(parents=True, exist_ok=False)
     manifest["run_id"] = run_id
-    failed = [case for case in cases if not case["request_success"]]
+    failed = [case for case in cases if not case["request_success"] and case.get('collection_attempted', 1)]
     mismatches = [r for r in rows if r["request_success"] and r["evaluation_in_scope"] and not r["state_match"]]
     files = {"results.csv": rows, "cases.csv": cases, "failures.csv": failed, "mismatches.csv": mismatches,
              "evidence_mismatches.csv": [r for r in rows if r["request_success"] and r["evaluation_in_scope"]
@@ -250,8 +250,10 @@ def save_run(report_root, version, manifest, metrics, rows, cases, records, comp
              "review_mismatches.csv": [r for r in mismatches if r.get("review_required") == "YES"],
              "tag_metrics.csv": build_tag_metrics(rows),
              "tag_metrics_core.csv": build_tag_metrics(rows, review_required="NO")}
+    if 'backend_capture' in manifest:
+        files['not_attempted.csv'] = [case for case in cases if not case.get('collection_attempted', 1)]
     for name, content in files.items():
-        fields = list(cases[0]) if name == "failures.csv" and cases else list(rows[0]) if "mismatches" in name and rows else None
+        fields = list(cases[0]) if name in ("failures.csv", "not_attempted.csv") and cases else list(rows[0]) if "mismatches" in name and rows else None
         write_csv(directory / name, content, fields)
     write_json(directory / "metrics.json", metrics)
     write_csv(directory / "risk_results.csv", risk_results or [],
@@ -269,7 +271,7 @@ def save_run(report_root, version, manifest, metrics, rows, cases, records, comp
     succeeded = [case for case in cases if case["request_success"]]
     latencies = [case["latency_ms"] for case in succeeded if case["latency_ms"] is not None]
     summary = {"generated_at": manifest["generated_at"], "evaluation_mode": manifest["mode"],
-               "cases_requested": manifest["requested_cases"], "cases_succeeded": len(cases) - len(failed),
+               "cases_requested": manifest["requested_cases"], "cases_succeeded": len(succeeded),
                "cases_failed": len(failed), "cases_not_attempted": manifest["requested_cases"] - len(cases),
                "evaluated_codes": EVALUATED_CODES, "excluded_codes": ["REPEAT"],
                "model_names": manifest["models"], "manifest": "manifest.json",
@@ -294,6 +296,9 @@ def save_run(report_root, version, manifest, metrics, rows, cases, records, comp
                                 "review_tag_comparisons": len(review_rows),
                                 "review_mismatches": len(files["review_mismatches.csv"])},
                "note": "See metrics.json for policies, denominators and review groups; dev_stable_ai is not teacher-confirmed."}
+    if 'backend_capture' in manifest:
+        summary['cases_not_attempted'] = metrics['coverage']['not_attempted_cases']
+        summary['backend_model_success_cases'] = manifest['backend_capture']['model_success_cases']
     write_json(directory / "summary.json", summary)
     with (directory / "predictions.jsonl").open("w", encoding="utf-8") as stream:
         for record in records:

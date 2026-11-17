@@ -36,7 +36,7 @@ SAFE_FAILURE_CODES = frozenset({
 } | {
     "request:" + code for code in (
         "connection_or_timeout", "invalid_json", "response_not_object", "missing_prediction",
-        "recorded_request_failure", "unexpected_error",
+        "recorded_request_failure", "unexpected_error", "backend_rule_only",
     )
 })
 
@@ -267,6 +267,16 @@ def evaluate(options, transport=None):
         if replay is None and index + 1 < len(cases) and options.sleep:
             time.sleep(options.sleep)
     manifest = build_manifest(dataset, cases, records, options, overlap, rule_sha256=rule_sha256)
+    backend_capture = getattr(options, 'backend_capture', None)
+    if backend_capture:
+        manifest['backend_capture'] = {**backend_capture['manifest'], 'prediction_view': backend_capture['view'],
+                                       'journal_path': backend_capture['journal_path']}
+        manifest['evaluation']['input_scope'] = backend_capture['manifest']['input_scope']
+        manifest['evaluation']['evidence_input'] = 'original_golden_complaint; actual_masked_model_input_unavailable'
+        if backend_capture['view'] == 'final':
+            for row in rows:
+                row.update(evidence_evaluable=0, evidence_exclusion_reason='backend_final_evidence_unavailable',
+                           evidence_match='NOT_EVALUABLE')
     if checkpoint:
         manifest["checkpoint"] = {"path": str(checkpoint), "sha256": file_hash(checkpoint)}
     manifest["supplemental_targets"] = target_artifact
@@ -278,6 +288,10 @@ def evaluate(options, transport=None):
         if any(row["context_subtypes"] for row in rows):
             manifest["not_evaluated"].pop("context_subtype", None)
     risk_results = risk_rows(targets, records, backend_predictions, [case["case_id"] for case in cases])
+    if backend_capture:
+        from .backend import captured_risk_rows
+        risk_results = (captured_risk_rows(targets, backend_capture['states'], [case['case_id'] for case in cases])
+                        if backend_capture['view'] == 'final' else [])
     metrics = compute_metrics(rows, len(cases), options.policies)
     cohort_rows = list(rows)
     attempted = {record["case_id"] for record in records}
@@ -288,6 +302,17 @@ def evaluate(options, transport=None):
                                for code in SUBTYPES)
     metrics["context_subtypes"] = subtype_metrics(cohort_rows, options.policies)
     metrics["final_risk"] = risk_metrics(risk_results)
+    if backend_capture:
+        metrics['backend_prediction_distribution'] = {
+            level: sum(state['summary']['riskLevel'] == level for state in backend_capture['states'].values())
+            for level in ('LOW', 'MEDIUM', 'HIGH', 'EMERGENCY')}
+        if backend_capture['view'] == 'final':
+            metrics['evidence']['status'] = 'not_evaluated_final_evidence_unavailable'
+    metrics['versions'] = {key: manifest[key] for key in ('models', 'prompt', 'rule', 'dataset', 'rag', 'codebook')}
+    if backend_capture:
+        metrics['versions']['backend'] = backend_capture['manifest']
+        if metrics['final_risk']['successful_cases']:
+            manifest['not_evaluated'].pop('final_risk', None)
     if backend_artifact and metrics["final_risk"]["successful_cases"]:
         manifest["not_evaluated"].pop("final_risk", None)
     metrics["review_groups"] = {
@@ -301,6 +326,24 @@ def evaluate(options, transport=None):
                            "not_attempted_cases": len(cases) - len(records),
                            "failure_codes": {code: sum(r["error_code"] == code for r in records)
                                              for code in sorted({r["error_code"] for r in records if r["error_code"]})}}
+    if backend_capture:
+        not_started = set(backend_capture['manifest']['not_started_case_ids'])
+        for row in (*rows, *case_rows):
+            row['collection_attempted'] = int(row['case_id'] not in not_started)
+        replay_coverage = dict(metrics['coverage'])
+        attempted_count = len(cases) - len(not_started)
+        failure_codes = dict(replay_coverage['failure_codes'])
+        missing = failure_codes.get('request:missing_prediction', 0) - len(not_started)
+        failure_codes.pop('request:missing_prediction', None)
+        if missing > 0:
+            failure_codes['request:missing_prediction'] = missing
+        metrics['coverage'].update(processed_cases=attempted_count, attempted_cases=attempted_count,
+                                   failed_cases=attempted_count - replay_coverage['succeeded_cases'],
+                                   not_attempted_cases=len(not_started), failure_codes=failure_codes,
+                                   replay_processing=replay_coverage)
+        metrics['coverage']['backend_capture'] = {
+            key: backend_capture['manifest'][key]
+            for key in ('selected_cases', 'captured_cases', 'model_success_cases', 'collection_stage_counts', 'incomplete_case_ids')}
     comparison = None
     comparison_failed = False
     if options.previous:

@@ -7,6 +7,7 @@ Python 3.11 이상에서 테스트 의존성을 설치한 뒤 실행한다.
 ```bash
 python -m pip install -r requirements-test.txt
 python -m pytest
+python scripts/run_regression.py
 python scripts/evaluate_risk_prompt_updated.py --dataset goldenset --validate-only
 ```
 

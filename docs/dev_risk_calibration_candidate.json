@@ -24,5 +24,10 @@
   "label_review_candidates": [
     "DEV071/PRIVACY",
     "DEV096/PRIVACY"
-  ]
+  ],
+  "live_development_baseline": {
+    "status": "complete",
+    "ai_success_cases": 100,
+    "aggregate_artifact": "docs/dev_risk_baseline_20261117.json"
+  }
 }

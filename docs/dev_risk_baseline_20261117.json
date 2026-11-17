@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "kind": "pre_change_backend_development_baseline_not_candidate_validation",
+  "dataset_schema": "dev",
+  "dataset_sha256": "da8232bda67a1103bdcdba640757b5e4b8f5eeae473272fd9bb9b017115d6199",
+  "cases": 100,
+  "ai_successes": 100,
+  "remaining_failures": 0,
+  "remaining_unattempted": 0,
+  "recovered_fallback_cases": 1,
+  "analysis_attempts": 101,
+  "original_99_success_ids_preserved": true,
+  "models": {
+    "claude-sonnet-4-6": 100
+  },
+  "input_scope": "isolated_draft; development complaint only; no development history/regulation/labels",
+  "binary_metrics": {
+    "present": {
+      "micro": {
+        "tp": 73,
+        "fp": 18,
+        "fn": 3,
+        "tn": 603,
+        "evaluated_labels": 697,
+        "excluded_gold_unknown": 3,
+        "gold_positive": 76,
+        "predicted_positive": 91,
+        "precision": 0.8021978021978022,
+        "recall": 0.9605263157894737,
+        "f1": 0.874251497005988
+      },
+      "macro_precision": 0.8064389392120485,
+      "macro_recall": 0.9594537815126051,
+      "macro_f1": 0.8738811731292934,
+      "macro_tag_denominator": 7
+    },
+    "present_boundary": {
+      "micro": {
+        "tp": 93,
+        "fp": 11,
+        "fn": 4,
+        "tn": 589,
+        "evaluated_labels": 697,
+        "excluded_gold_unknown": 3,
+        "gold_positive": 97,
+        "predicted_positive": 104,
+        "precision": 0.8942307692307693,
+        "recall": 0.9587628865979382,
+        "f1": 0.9253731343283582
+      },
+      "macro_precision": 0.8985507246376813,
+      "macro_recall": 0.9597752144335996,
+      "macro_f1": 0.9261004418425708,
+      "macro_tag_denominator": 7
+    }
+  },
+  "privacy_metrics": {
+    "evaluated_labels": 100,
+    "exact_state_accuracy": 0.94,
+    "confusion_matrix": {
+      "PRESENT": {
+        "PRESENT": 10,
+        "ABSENT": 0,
+        "BOUNDARY": 0,
+        "UNKNOWN": 0
+      },
+      "ABSENT": {
+        "PRESENT": 4,
+        "ABSENT": 84,
+        "BOUNDARY": 0,
+        "UNKNOWN": 0
+      },
+      "BOUNDARY": {
+        "PRESENT": 1,
+        "ABSENT": 1,
+        "BOUNDARY": 0,
+        "UNKNOWN": 0
+      },
+      "UNKNOWN": {
+        "PRESENT": 0,
+        "ABSENT": 0,
+        "BOUNDARY": 0,
+        "UNKNOWN": 0
+      }
+    },
+    "binary": {
+      "present": {
+        "tp": 10,
+        "fp": 5,
+        "fn": 0,
+        "tn": 85,
+        "evaluated_labels": 100,
+        "excluded_gold_unknown": 0,
+        "gold_positive": 10,
+        "predicted_positive": 15,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1": 0.8
+      },
+      "present_boundary": {
+        "tp": 11,
+        "fp": 4,
+        "fn": 1,
+        "tn": 84,
+        "evaluated_labels": 100,
+        "excluded_gold_unknown": 0,
+        "gold_positive": 12,
+        "predicted_positive": 15,
+        "precision": 0.7333333333333333,
+        "recall": 0.9166666666666666,
+        "f1": 0.8148148148148148
+      }
+    }
+  },
+  "tag_exact_match": {
+    "matched": 668,
+    "denominator": 700,
+    "rate": 0.9542857142857143
+  },
+  "denominators": {
+    "requested_cases": 100,
+    "successful_cases": 100,
+    "successful_labels": 700,
+    "failed_labels": 0,
+    "out_of_scope_labels": 100
+  },
+  "run_id": "20261117T084558715772Z_dev-before-privacy-recovered-final_c195a30d",
+  "metrics_sha256": "dc8e2e2a19dcb6d6e0231bbbbf0a00e65d92e823205dede310d30357b7295772",
+  "relative_report_path": "reports/backend_dev_before_privacy/final/20261117T084558715772Z_dev-before-privacy-recovered-final_c195a30d",
+  "actual_deployed_prompt_rule_rag_versions": "server_unreported",
+  "actual_masked_model_input_provenance_verified": false,
+  "ground_truth": "development_AI_PROPOSED; original review groups preserved; not teacher-confirmed gold",
+  "candidate_after_validation": "awaiting_AI_deployment",
+  "goldenset_final_validation": "not_run"
+}

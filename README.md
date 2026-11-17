@@ -16,3 +16,4 @@ python scripts/evaluate_risk_prompt_updated.py --dataset goldenset --validate-on
 - [#33 핵심 20건·운영 로그·#28 미완료 계약](docs/regression_and_logging.md)
 - [#26 위험도·세부 유형 정답 양식, 백엔드 결과 평가, 그래프](docs/supplemental_evaluation.md)
 - [#26 공개 Backend API로 골든셋 실제 평가·중단 재개·결과 저장](docs/backend_evaluation.md)
+- [개발셋 기반 개인정보 태깅 개선 후보와 배포 후 검증](docs/dev_risk_calibration.md)

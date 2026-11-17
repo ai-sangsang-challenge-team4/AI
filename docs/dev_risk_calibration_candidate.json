@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "kind": "development_prompt_candidate_not_validated_improvement",
+  "prompt_version": "risk-dev-privacy-v1",
+  "candidate_source_sha256": {
+    "app/rag/prompt.py": "5d036c586e774e7990519d7d43ba9251f78d127ee76e65b6ae6ce1e758aef1ef",
+    "app/core/evaluation_metadata.py": "37f7f12376129e48aee46f672085b1e746cfb90b23947142338b002479465d97"
+  },
+  "tuning_data_sha256": {
+    "data/dev/teachercare_dev_cases_100.csv": "ada619f7b892576842718bd3469d2abdb7dd6ace01f7127fef6118790e42c7bc",
+    "data/dev/teachercare_dev_risk_labels_100.csv": "bb26d68646c050fe8b3324914c091436e23c11c15f68268e801a4e50772c9024"
+  },
+  "original_labels_modified": false,
+  "goldenset_case_level_tuning": false,
+  "existing_goldenset_aggregate_baseline_previously_known": true,
+  "offline_verification": {
+    "passed": 203,
+    "xfailed": 3
+  },
+  "live_candidate_validation": "awaiting_AI_deployment",
+  "goldenset_final_validation": "not_run; only_after_development_validation_and_freeze",
+  "baseline_capture": "data/private/backend_dev_before_privacy/",
+  "scoring_engine_modified": false,
+  "label_review_candidates": [
+    "DEV071/PRIVACY",
+    "DEV096/PRIVACY"
+  ]
+}

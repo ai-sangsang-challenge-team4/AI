@@ -176,6 +176,7 @@ class Journal:
             self.lock.close()
             raise BackendInputError('This capture is already running') from None
         self.mutex, self.states = threading.Lock(), {}
+        self.completed = {}
         if self.path.exists():
             if not resume:
                 self.close()
@@ -193,7 +194,7 @@ class Journal:
                         raise ValueError('Unknown checkpoint case')
                     if item.get('stage') == 'complete':
                         validate_capture(item)
-                    self.states[case_id] = item
+                    self._remember(item)
             except (ValueError, KeyError, ContractError):
                 self.close()
                 raise BackendInputError('Checkpoint invalid; restore it without repeating POST requests') from None
@@ -210,7 +211,13 @@ class Journal:
                 stream.write(json.dumps(record, ensure_ascii=False, allow_nan=False) + '\n')
                 stream.flush()
                 os.fsync(stream.fileno())
-            self.states[record['case_id']] = dict(record)
+            self._remember(dict(record))
+
+    def _remember(self, record):
+        case_id = record['case_id']
+        self.states[case_id] = record
+        if record.get('stage') == 'complete':
+            self.completed[case_id] = record
 
     def close(self):
         fcntl.flock(self.lock, fcntl.LOCK_UN)
@@ -371,18 +378,28 @@ def captured_risk_rows(targets, states, selected_ids):
     return rows
 
 
-def export_capture(directory, journal, dataset, cases, *, backend_source_commit=None):
+def export_capture(directory, journal, dataset, cases, *, failures=(), backend_source_commit=None):
     """Export three views of the SAME responses; this performs no network calls."""
     validate_checkpoint_inputs(journal.states, cases)
     directory = Path(directory)
     selected = [case['case_id'] for case in cases]
-    states = {cid: journal.states[cid] for cid in selected if journal.states.get(cid, {}).get('stage') == 'complete'}
+    # An in-progress retry can supersede the checkpoint stage before it supplies a new result.
+    states = {cid: journal.completed[cid] for cid in selected if cid in journal.completed}
+    validate_checkpoint_inputs(states, cases)
+    failed = {item['case_id']: item['error_code'] for item in failures}
+    unattempted = [cid for cid in selected if cid not in journal.states and cid not in failed]
     rules, predictions = {}, {view: [] for view in ('rule', 'llm', 'final')}
     mapping = []
     for case in cases:
         cid = case['case_id']
         state = states.get(cid)
         if not state:
+            if cid in failed:
+                for values in predictions.values():
+                    values.append({'case_id': cid, 'mode': 'rule_llm', 'attempt': 1,
+                                   'source_provenance_verified': False, 'request_success': 0,
+                                   'error_code': 'request:' + failed[cid].removeprefix('backend:'),
+                                   'response': None})
             continue
         validate_capture(state)
         details, summary = state['detectorResults'], state['summary']
@@ -428,9 +445,11 @@ def export_capture(directory, journal, dataset, cases, *, backend_source_commit=
                 'capture_status': ('partial' if len(states) != len(cases) else 'complete'
                                    if all(model_succeeded(s) for s in states.values()) else 'complete_with_model_failures'),
                 'analysis_modes': dict(Counter(s['summary']['analysisMode'] for s in states.values())),
-                'collection_stage_counts': dict(Counter(journal.states.get(cid, {}).get('stage', 'not_started') for cid in selected)),
+                'collection_stage_counts': dict(Counter(
+                    journal.states.get(cid, {}).get('stage', 'failed_before_intent' if cid in failed else 'not_started')
+                    for cid in selected)),
                 'incomplete_case_ids': [cid for cid in selected if cid not in states],
-                'not_started_case_ids': [cid for cid in selected if cid not in journal.states],
+                'not_started_case_ids': unattempted,
                 'journal_sha256': file_hash(journal.path),
                 'backend_source_commit': backend_source_commit, 'deployment_verified': False,
                 'rule_version': 'server_unreported', 'prompt_version': 'server_unreported',

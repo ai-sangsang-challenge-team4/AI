@@ -143,9 +143,10 @@ def main(argv=None):
         failures = collector.collect(cases, workers=args.workers,
                                      progress=lambda value: print(json.dumps(value, ensure_ascii=False), flush=True))
     try:
-        states, capture_manifest = export_capture(args.capture_dir, journal, dataset, cases)
+        if not args.replay_only:
+            write_json(args.capture_dir / 'capture_failures.json', failures)
+        states, capture_manifest = export_capture(args.capture_dir, journal, dataset, cases, failures=failures)
         index = make_reports(args, dataset, cases, journal, states, capture_manifest)
-        write_json(args.capture_dir / 'capture_failures.json', failures)
         print(json.dumps({'event': 'reports_saved', 'captured': len(states), 'requested': len(cases),
                           'reports': index['reports'], 'failures': failures}, ensure_ascii=False), flush=True)
         return int(bool(failures) or len(states) != len(cases)

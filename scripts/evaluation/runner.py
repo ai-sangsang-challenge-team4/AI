@@ -37,6 +37,8 @@ SAFE_FAILURE_CODES = frozenset({
     "request:" + code for code in (
         "connection_or_timeout", "invalid_json", "response_not_object", "missing_prediction",
         "recorded_request_failure", "unexpected_error", "backend_rule_only",
+        "capture_interrupted", "response_too_large", "invalid_json_shape", "invalid_login_response",
+        "invalid_token_expiry", "invalid_created_draft", "invalid_analysis_summary",
     )
 })
 

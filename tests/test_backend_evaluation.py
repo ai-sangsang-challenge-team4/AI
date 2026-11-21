@@ -1,5 +1,6 @@
 """Offline Backend capture: mutations, resumption, provenance and secret boundaries."""
 import copy
+import csv
 import io
 import json
 import runpy
@@ -108,6 +109,30 @@ class BackendCaptureTests(unittest.TestCase):
         self.assertEqual(record['previous_attempts'][0]['complaintId'], 6)
         self.assertEqual(collector.retry_fallbacks([self.case]), 0)
         self.assertEqual(sum(method == 'POST' and path == '/complaints' for method, path, _ in self.client.calls), 1)
+
+    def test_retry_keeps_previous_capture_until_replacement_completes(self):
+        journal = self.journal()
+        old = capture(mode='RULE_ONLY', complaint_id=6, analysis_id=8)
+        old['complaint_sha256'] = json_hash(self.case['message_text'])
+        journal.append(old)
+        collector = Collector(self.client, journal, self.dataset, self.context, 'retry')
+        collector.retry_fallbacks([self.case])
+        journal.close()
+
+        resumed = self.journal(resume=True)
+        states, manifest = export_capture(self.root, resumed, self.dataset, [self.case])
+        self.assertEqual(resumed.states['G001']['stage'], 'retry_ready')
+        self.assertEqual(states['G001']['complaintId'], 6)
+        self.assertEqual(states['G001']['summary']['analysisId'], 8)
+        self.assertEqual(manifest['model_success_cases'], 0)
+        self.assertEqual(self.client.calls, [])
+
+        collector = Collector(self.client, resumed, self.dataset, self.context, 'retry')
+        collector.collect_one(self.case)
+        states, manifest = export_capture(self.root, resumed, self.dataset, [self.case])
+        self.assertEqual(states['G001']['complaintId'], 7)
+        self.assertEqual(states['G001']['summary']['analysisId'], 9)
+        self.assertEqual(manifest['model_success_cases'], 1)
 
     def test_analysis_timeout_preserves_id_and_is_not_automatically_retried(self):
         journal = self.journal()
@@ -404,9 +429,38 @@ class BackendCaptureTests(unittest.TestCase):
         directory = Path(result['reports']['llm'])
         summary = json.loads((directory / 'summary.json').read_text())
         self.assertEqual((summary['cases_succeeded'], summary['cases_failed'], summary['cases_not_attempted']), (1, 0, 1))
-        import csv
         with (directory / 'not_attempted.csv').open(encoding='utf-8-sig') as stream:
             self.assertEqual([row['case_id'] for row in csv.DictReader(stream)], ['G002'])
+
+    def test_auth_failure_before_post_is_reported_as_failed_in_live_and_replay(self):
+        remote = BackendClient(self.client.base_url, FakeClient.email, 'synthetic-password')
+        cli_args = ['--capture-dir', str(self.root), '--report-dir', str(self.root / 'reports'), '--limit', '2']
+        credentials = {'TEACHERHUB_EMAIL': FakeClient.email, 'TEACHERHUB_PASSWORD': 'synthetic-password'}
+        with (patch.dict('os.environ', credentials),
+              patch('scripts.evaluate_backend_goldenset.BackendClient', return_value=remote),
+              patch.object(remote, 'context', return_value=self.context),
+              patch.object(remote, '_request', side_effect=BackendError('backend:http_503')) as request):
+            self.assertEqual(main(cli_args), 1)
+            request.assert_called_once_with('POST', '/auth/login',
+                                            {'email': FakeClient.email, 'password': 'synthetic-password'})
+        self.assertEqual(len((self.root / 'checkpoint.jsonl').read_text().splitlines()), 1)
+
+        for replay_only in (False, True):
+            with self.subTest(replay_only=replay_only):
+                if replay_only:
+                    with patch('scripts.evaluate_backend_goldenset.BackendClient') as client:
+                        self.assertEqual(main([*cli_args, '--replay-only']), 1)
+                        client.assert_not_called()
+                index = json.loads((self.root / 'report_index.json').read_text())
+                for view in ('rule', 'llm', 'final'):
+                    coverage = index['views'][view]['coverage']
+                    self.assertEqual(coverage['failed_cases'], 1)
+                    self.assertEqual(coverage['not_attempted_cases'], 1)
+                    self.assertEqual(coverage['failure_codes'], {'request:http_503': 1})
+                    directory = Path(index['reports'][view])
+                    for filename, case_id in [('failures.csv', 'G001'), ('not_attempted.csv', 'G002')]:
+                        with (directory / filename).open(encoding='utf-8-sig') as stream:
+                            self.assertEqual([row['case_id'] for row in csv.DictReader(stream)], [case_id])
 
 
 class BackendTransportTests(unittest.TestCase):

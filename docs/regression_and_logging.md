@@ -9,15 +9,81 @@ Python 3.11 이상에서 테스트 의존성만 설치하고 저장소 루트에
 ```bash
 python -m pip install -r requirements-test.txt
 python -m pytest
+python scripts/run_regression.py
 ```
 
-테스트 실행 자체에는 비밀키·네트워크가 필요 없다. 이미 의존성이 설치된 환경에서는 설치 단계도 생략한다. 이 작업에서는 설치나 외부 연결 없이 로컬에 있던 Python 3.13 / pytest 8.4.2 / FastAPI 0.135.2 / Pydantic 2.12.5 / httpx 0.28.1로 검증했다.
+테스트 실행 자체에는 비밀키·네트워크가 필요 없다. 이미 의존성이 설치된 환경에서는 설치 단계도 생략한다.
+CI와 새 실행기 검증은 Python 3.11을 사용한다. 가벼운 테스트 의존성 버전은 `requirements-test.txt`에 고정한다.
 
 `pytest.ini`는 `tests/`만 기본 수집하고 `benchmark/`, `reports/`를 재귀 수집에서 제외한다. `benchmark/test_models.py` 같은 외부 연결 스크립트를 기본 pytest에서 실행하지 않는다. 실제 provider SDK·Chroma·임베딩 패키지는 테스트 의존성에 없다.
 
 `tests/conftest.py`가 각 테스트에서 API Key 환경변수를 제거하고 socket 연결을 실패시킨다. FastAPI TestClient는 실제 HTTP 소켓 대신 ASGI 앱을 직접 호출한다. 모델·검색기만 대체하고 실제 라우팅·서비스·프롬프트 조립·출력 검증·오류 응답·로그 코드를 실행한다. 20건 모두 개발 CSV에서 읽으며 골든셋을 회귀 정답으로 사용하지 않는다. #26의 별도 데이터 검증 테스트는 기존처럼 골든셋 구조를 확인한다.
 
 **이 결과는 오프라인 계약 검증이다. 실제 모델 품질·프롬프트 개선 효과·검색 품질의 검증이 아니다.** 고정 모의 응답이 올바르게 처리되고 부분 상태 조건이 집행되는지 확인한다. 실제 모델이 같은 태그를 판정한다는 주장은 하지 않는다. 프롬프트 문장만 바뀌면 모의 응답이 자동으로 달라지지도 않는다. 실제 품질은 별도로 승인한 LLM/RAG 실행 후 #26 평가기로 측정해야 한다.
+
+## 한 명령으로 실행하고 실제 응답의 퇴행 확인
+
+`python scripts/run_regression.py`는 핵심 20건, 가드레일, 운영 로그 테스트를 실행하고
+`reports/regression/<UTC>_<버전>_<고유-ID>/`에 `summary.json`, `manifest.json`,
+`offline_aggregate.json`, `failures.csv`를 저장한다. 실행마다 새 폴더를 만들며 이전 결과를 덮어쓰지 않는다.
+실패 시 사례 ID와 제한된 실패 이유를 출력한다. 자식 pytest의 원본 출력·traceback은 보관하거나
+재출력하지 않는다. 집계 파일에는 사례 ID·원문·모델 출력이 없다.
+
+기본 실행은 네트워크·키·모델 비용 없이 동작한다. `summary.json.model_regression.status`는
+`not_run`이다. #28의 예상 실패 3개는 `pending_guardrails`에 별도로 표시하며 통과로 합산하지 않는다.
+미완료 가드레일이 있으면 명령 자체도 실패해야 하는 검토 단계에서는 다음 옵션을 사용한다.
+
+```bash
+python scripts/run_regression.py --require-complete-guardrails
+```
+
+실제 판정 퇴행은 **개발셋** 응답으로 검사한다. 아래 둘 중 하나를 같은 실행 명령에 지정한다.
+
+```bash
+# #26 개발셋 평가기가 저장한 응답 재사용: 추가 모델 호출 없음
+python scripts/run_regression.py \
+  --predictions reports/<개발셋-실행>/predictions.jsonl --run-version saved-dev-v1
+
+# AI 서버 직접 실행: 20건의 유료 LLM/RAG 요청이 발생함
+python scripts/run_regression.py \
+  --base-url http://127.0.0.1:8000 --run-version prompt-v2
+```
+
+`--base-url`은 Backend 로그인/민원 API가 아닌 AI `/api/v1/ai/analyze` 서버의 origin이다.
+localhost는 이 명령을 실행하는 컴퓨터를 뜻한다. 서버 내부에서 실행하거나 SSH 포워딩한 경우에만
+해당 localhost를 사용한다. 원격 서버에는 HTTPS가 필요하다. URL에 인증 정보·query를 넣지 않는다.
+이번 구현 검증에서는 유료 모델이나 공개 Backend에 추가 요청을 보내지 않았다.
+
+`--mode rule_llm --rule-results <개발사례별-Rule-결과.json>`으로 실제 Rule 문맥을 함께 전달할 수 있다.
+Rule 결과는 별도로 캡처한 값이어야 하며, 개발 라벨에서 만들지 않는다. 요청에는 원문과
+허용된 Rule 필드만 넣고 기대 정답·선정 이유·원본 라벨은 전달하지 않는다. REPEAT와 최종 위험도
+Emergency 판정은 이 20건의 정답 조건에 포함하지 않는다. `urgent_response` 사례의 THREAT
+조건은 최종 Emergency 위험도 정답을 의미하지 않는다.
+
+저장 응답은 `case_id`, `mode`, `input_sha256`, `complaint_sha256`,
+`source_provenance_verified`, `request_success`, `response`를 갖는 #26 형식을 사용한다.
+현재 개발셋 입력과 해시가 맞고 provenance가 확인된 응답만 조건을 검사한다. 이는 기록의 일치
+검사이며 모델 실행의 진위를 인증하는 기능은 아니다. 이 정보가 없는 임의 JSON, 누락된 사례,
+요청 실패, 중복 ID, 골든셋 ID, 다른 입력의 응답을 정상 결과로 보정하지 않는다. 개발셋 100건
+전체 파일을 주면 선정된 20건만 검사한다. 사람 검토 대기인 33개 부분 기대 조건을 사용한다는
+사실은 실제 응답 검사 결과에도 기록한다.
+
+실제 응답 모드에서는 `model_regression`에 조건 통과/실패, 실패 사례 목록을 저장하고,
+`failures.csv`에는 사례·태그·기대 상태·실제 상태·제한된 오류 코드를 쓴다. 태깅 지표·예측·버전은
+하위 `tagging/`의 기존 #26 보고서에 보존한다. live 요청의 완료 응답도 사례마다 체크포인트에
+동기 저장한다. 오프라인 테스트·로그 검사나 엄격 가드레일 조건이 실패하면 모델 요청을 시작하지 않는다.
+live 요청의 HTTP·출력 계약 검증이 실패하면 후속 요청도 중단한다. 완료 기록과 실패·미시도
+coverage는 보존하며 누락 사례를 통과로 처리하지 않는다. 유효한 응답의 기대 상태 불일치는
+20건 수집 후 모두 보고한다.
+
+저장 예측·Rule 입력은 오프라인 테스트 전에 실행 폴더에 권한 600의 스냅샷으로 복사하고,
+그 바이트를 평가·해시 기록에 함께 사용한다. 테스트 중 원본 파일이 바뀌어도 서로 다른 버전이
+섞이지 않는다. 스냅샷·상세 태깅 보고서는 원문을 포함할 수 있으므로 기존처럼 Git 추적과
+CI 기본 업로드에서 제외한다.
+
+종료 코드는 0=요청한 검사 통과, 1=검사 실패, 2=입력/실행 오류다. 기본 모드의 0은 실제 모델
+품질 평가나 #28 전체 완료를 뜻하지 않는다. `guardrails_complete`와
+`human_expectation_review_complete`를 별도로 확인한다.
 
 ## 핵심 20건과 기대 조건
 
@@ -116,9 +182,34 @@ JSON 엔드포인트의 응답을 미들웨어에서 버퍼링하므로, Pydanti
 
 테스트는 성공·timeout·JSON·스키마·근거·검색·provider·request/response 검증 실패에 비밀 표식을 주입해 운영 로그·stdout·stderr·실패 본문에서 미노출을 검사한다. 실패 응답에 원문을 포함하는 FastAPI 기본 422도 교체한다. 병렬 요청 8건의 ID 분리와 JSON formatter의 임의 메시지·traceback 무시도 검증한다. 성공 응답의 업무상 요약/근거는 기존 API 계약대로 반환하며, 운영 로그에 복사하지 않는다.
 
+### 저장 로그의 허용 목록 검사
+
+성공·timeout·provider 실패 형식의 **합성 샘플**은
+`tests/fixtures/operational_log_samples.jsonl`에 있다. 샘플 ID·0으로 채운 해시는 실제 운영 값이 아니다.
+운영 환경에서 수집한 stderr JSONL도 같은 검증기로 검사할 수 있다.
+
+```bash
+python scripts/validate_operational_logs.py --input tests/fixtures/operational_log_samples.jsonl
+python scripts/validate_operational_logs.py --input /path/to/operations.jsonl
+# 회귀 실행과 함께 확인
+python scripts/run_regression.py --log-file /path/to/operations.jsonl
+```
+
+정확히 7개 필드, 허용된 엔드포인트·모델·오류 코드, ID·프롬프트 해시 형식, 유한한 비음수 응답 시간,
+성공/오류 코드의 일관성을 검사한다. 원문 필드 추가, URL query, 자유 형식 오류, 중복 JSON 키,
+깨진 JSON, 64 KiB를 넘는 줄을 거부한다. 빈 파일도 검사 통과로 표시하지 않는다. 결과에는
+집계와 오류 줄 번호·허용된 사유만 담으며 원본 줄은 출력·복사하지 않는다. 오류 목록은 최대 100개다.
+이는 로그 스키마 검사이며 모든 종류의 개인정보를 탐지하는 별도 DLP 도구는 아니다.
+로그 해시는 검증기가 EOF까지 실제 읽은 바이트만 대상으로 계산한다. `checked_bytes`와
+`checked_sha256`를 결과에 기록하며, 이후 운영 로그에 추가된 줄은 이번 검증 범위에 포함하지 않는다.
+
 ## CI와 평가 산출물 분리
 
 `.github/workflows/offline-regression.yml`은 PR 및 수동 실행용이다. 테스트 의존성과 선택적 그래프 의존성을 설치하고 `python -m pytest --aggregate-report reports/ci/aggregate.json`을 실행한다. 합성 데이터의 PNG 생성까지 검증한다. 코드 읽기 권한만 사용하며 모델 비밀키를 전달하지 않는다. 유료 모델·RAG 호출 단계가 없다.
+
+추가 CI 단계는 `python scripts/run_regression.py --log-file tests/fixtures/operational_log_samples.jsonl`로
+실제 단일 명령의 연결과 합성 로그 샘플을 검증한다. 실제 응답 회귀나 운영 서버 로그 검증을
+CI에서 완료했다고 표시하지 않는다.
 
 기본 보관 artifact는 `reports/ci/aggregate.json` **한 파일**이며 통과/실패/skip/xfail 수, 핵심 20건 집계, 종료 코드와 실행 시간만 포함한다. 입력·응답·로그·case ID·예외 전문은 포함하지 않는다. #26의 `results.csv`, `predictions.jsonl`, 원문이 있는 보고서나 pytest traceback/JUnit 전체를 artifact로 업로드하지 않는다. 집계 파일에 xfail 수가 남으므로 미완료 사항을 성공 수로 합치지 않는다. 원격 workflow의 실행 여부와 결과는 해당 PR의 Checks에서 확인한다.
 

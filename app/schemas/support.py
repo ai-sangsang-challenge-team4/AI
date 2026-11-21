@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SummaryRequest(BaseModel):
@@ -14,6 +14,13 @@ class ResponseDraftRequest(BaseModel):
     content: str
 
 
+class RagReference(BaseModel):
+    source: str
+    page: int | None = None
+    content: str
+
+
 class ResponseDraftResult(BaseModel):
     content: str
     modelName: str
+    references: list[RagReference] = Field(default_factory=list)

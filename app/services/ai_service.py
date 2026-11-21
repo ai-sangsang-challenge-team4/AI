@@ -30,6 +30,7 @@ from app.schemas.revision import (
 from app.schemas.support import (
     SummaryResult,
     ResponseDraftResult,
+    RagReference,
 )
 
 
@@ -278,6 +279,15 @@ class AiService:
         return ResponseDraftResult(
             content=response,
             modelName=self.response_draft_llm_client.model,
+            references=[
+                RagReference(
+                    source=str(document.get("source", "알 수 없음")),
+                    page=document.get("page"),
+                    content=str(document.get("content", "")),
+                )
+                for document in documents
+                if document.get("content")
+            ],
         )
 
     # ========================================================

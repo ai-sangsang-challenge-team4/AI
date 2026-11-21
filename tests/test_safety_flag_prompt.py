@@ -25,7 +25,7 @@ def test_safety_flags_define_true_false_null_for_every_signal():
     )
 
     for name in ("credibleThreat", "studentSafetyConcern", "privacyExposure"):
-        part = prompt.split(f"[{name} —", 1)[1].split("\\n[", 1)[0]
+        part = prompt.split(f"[{name} —", 1)[1].split("\n[", 1)[0]
         assert "true:" in part
         assert "false:" in part
         assert "null:" in part

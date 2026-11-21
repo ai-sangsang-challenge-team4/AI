@@ -26,6 +26,7 @@ from .reporting import write_csv, write_json
 from .supplemental import LEVELS
 
 INPUT_SCOPE = 'isolated_draft; golden complaint only; no golden history/regulation/labels'
+DEV_INPUT_SCOPE = 'isolated_draft; development complaint only; no development history/regulation/labels'
 
 
 class BackendError(RuntimeError):
@@ -352,7 +353,7 @@ class Collector:
 def capture_header(dataset, cases, client, context):
     return {'schema_version': 1, 'type': 'backend_capture', 'dataset_sha256': dataset.digest,
             'base_url': client.base_url, **context, 'case_ids': [c['case_id'] for c in cases],
-            'input_scope': INPUT_SCOPE,
+            'input_scope': INPUT_SCOPE if dataset.schema == 'goldenset' else DEV_INPUT_SCOPE,
             'complaints_sent': False}
 
 
@@ -439,7 +440,7 @@ def export_capture(directory, journal, dataset, cases, *, failures=(), backend_s
         with (directory / f'{view}_predictions.jsonl').open('w', encoding='utf-8') as stream:
             for value in values:
                 stream.write(json.dumps(value, ensure_ascii=False, allow_nan=False) + '\n')
-    manifest = {'schema_version': 1, 'dataset_sha256': dataset.digest, 'selected_cases': len(cases),
+    manifest = {'schema_version': 1, 'dataset_schema': dataset.schema, 'dataset_sha256': dataset.digest, 'selected_cases': len(cases),
                 'captured_cases': len(states), 'model_success_cases': sum(model_succeeded(s) for s in states.values()),
                 'replaced_fallback_attempts': sum(len(s.get('previous_attempts', [])) for s in journal.states.values()),
                 'capture_status': ('partial' if len(states) != len(cases) else 'complete'
@@ -455,7 +456,7 @@ def export_capture(directory, journal, dataset, cases, *, failures=(), backend_s
                 'rule_version': 'server_unreported', 'prompt_version': 'server_unreported',
                 'rag_version': 'server_unreported', 'actual_generation_settings': None,
                 'note': 'Repository HEAD is not proof of deployment; temperature metadata is not SDK provenance.',
-                'input_scope': INPUT_SCOPE,
+                'input_scope': journal.header['input_scope'],
                 'source_provenance_verified': False, 'masked_model_input_captured': False,
                 'comparison_kind': 'same_capture_rule_vs_hybrid_ablation; not prompt/model before-after',
                 'final_evidence': 'unavailable in detector-results; final view evidence metrics disabled',

@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 
+from app.rag.prompt import RISK_PROMPT_VERSION
 
 def evaluation_provenance(documents, retriever):
     root = Path(__file__).resolve().parents[2]
@@ -16,7 +17,7 @@ def evaluation_provenance(documents, retriever):
     return {
         "runtime_git_sha": os.getenv("GIT_SHA"),
         "source_hashes": hashes,
-        "prompt_version": os.getenv("PROMPT_VERSION"),
+        "prompt_version": RISK_PROMPT_VERSION,
         "rule_version": os.getenv("RULE_VERSION"),
         "rag_version": os.getenv("RAG_VERSION"),
         "rag_index_sha256": os.getenv("RAG_INDEX_SHA256"),

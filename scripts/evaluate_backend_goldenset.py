@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Public Backend Golden Set capture and offline reports (#26)."""
+"""Public Backend dev/Golden Set capture and offline reports (#26)."""
 from __future__ import annotations
 
 import argparse
@@ -24,6 +24,7 @@ from scripts.evaluation.supplemental import read_targets
 
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--dataset', choices=('dev', 'goldenset'), default='goldenset')
     parser.add_argument('--base-url', default='https://teacherhub.duckdns.org')
     parser.add_argument('--capture-dir', required=True, type=Path)
     parser.add_argument('--report-dir', type=Path, default=Path('reports/backend_goldenset'))
@@ -46,25 +47,30 @@ def build_parser():
     return parser
 
 
-def validate_previous(args):
+def validate_previous(args, dataset=None):
     if args.previous_final:
         previous = json.loads((args.previous_final / 'manifest.json').read_text())
-        if previous.get('backend_capture', {}).get('prediction_view') != 'final':
+        if (not isinstance(previous, dict) or not isinstance(previous.get('backend_capture'), dict)
+                or previous['backend_capture'].get('prediction_view') != 'final'):
             raise BackendInputError('--previous-final requires a final-view Backend report')
+        if dataset is not None and (not isinstance(previous.get('dataset'), dict)
+                                    or previous['dataset'].get('sha256') != dataset.digest):
+            raise BackendInputError('--previous-final belongs to a different dataset')
 
 
 def make_reports(args, dataset, cases, journal, states, capture_manifest):
-    validate_previous(args)
+    validate_previous(args, dataset)
     capture_manifest = {**capture_manifest, 'gold_standard_acceptance': {
         'status': args.gold_standard_status,
-        'scope': 'eight tag states in the original Golden Set CSVs; final risk not included',
+        'scope': ('eight tag states in the original Golden Set CSVs; final risk not included'
+                  if dataset.schema == 'goldenset' else 'AI_PROPOSED development labels; not teacher-confirmed gold'),
         'original_review_metadata_preserved': True}}
     if args.previous_final:
         capture_manifest['comparison_kind'] = 'previous_final_run; uncontrolled deployment comparison'
     directories = {}
     metrics_by_view = {}
     for view in ('rule', 'llm', 'final'):
-        command = ['--dataset', 'goldenset', '--mode', 'rule_llm',
+        command = ['--dataset', dataset.schema, '--mode', 'rule_llm',
                    '--predictions', str(args.capture_dir / f'{view}_predictions.jsonl'),
                    '--rule-results', str(args.capture_dir / 'captured_rules.json'),
                    '--report-dir', str(args.report_dir / view), '--run-version', f'{args.run_version}-{view}',
@@ -86,12 +92,12 @@ def make_reports(args, dataset, cases, journal, states, capture_manifest):
         directories[view] = str(directory.resolve())
         metrics_by_view[view] = {'coverage': metrics['coverage'], 'binary': metrics['binary'],
                                  'final_risk_status': metrics['final_risk']['status'], 'exit_status': status}
-    index = {'dataset_sha256': dataset.digest, 'capture': str(args.capture_dir.resolve()),
+    index = {'dataset_schema': dataset.schema, 'dataset_sha256': dataset.digest, 'capture': str(args.capture_dir.resolve()),
              'reports': directories, 'views': metrics_by_view,
              'comparison': ('Previous final run; actual deployment/generation differences are unverified'
                             if args.previous_final else 'Rule versus final from the same captured backend executions; not a prompt improvement claim'),
              'gold_standard_acceptance': capture_manifest['gold_standard_acceptance'],
-             'limitations': ['REPEAT excluded; golden history/regulation not supplied',
+             'limitations': ['REPEAT excluded; original case history/regulation not supplied',
                              'Original review groups are preserved separately from explicit team acceptance',
                              'Final risk requires independent CONFIRMED human targets',
                              'Deployed prompt/rule/source versions and masked model input are unreported']}
@@ -101,16 +107,19 @@ def make_reports(args, dataset, cases, journal, states, capture_manifest):
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
-    dataset = load_dataset('data/goldenset', 'goldenset')
-    dev = load_dataset('data/dev', 'dev')
-    if not check_disjoint(dataset.cases, dev.cases)['passed']:
+    dataset = load_dataset(f'data/{args.dataset}', args.dataset)
+    other_schema = 'dev' if args.dataset == 'goldenset' else 'goldenset'
+    other = load_dataset(f'data/{other_schema}', other_schema)
+    if not check_disjoint(dataset.cases, other.cases)['passed']:
         raise BackendInputError('dev/gold overlap detected')
     if args.limit is not None and args.limit < 1:
         raise BackendInputError('--limit must be positive')
     if args.retry_fallbacks and (not args.resume or args.replay_only):
         raise BackendInputError('--retry-fallbacks requires live --resume')
+    if args.dataset == 'dev' and args.gold_standard_status == 'team_approved':
+        raise BackendInputError('Development labels cannot be declared team-approved Golden Set truth')
     read_targets(args.targets, dataset)
-    validate_previous(args)
+    validate_previous(args, dataset)
     if args.charts:
         check_available()
     cases = dataset.cases[:args.limit] if args.limit else dataset.cases

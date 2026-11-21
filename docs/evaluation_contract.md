@@ -155,7 +155,7 @@ manifest는 다음을 구분한다.
 
 기존 서버의 `metadata.temperature=0`은 실제 호출 설정 증거로 사용하지 않는다. 이번 변경은 위험 태깅 클라이언트에만 temperature=0을 명시하고 `generationSettings`에 실제 SDK 인자를 반환한다. 문맥 분석·수정 클라이언트는 기존처럼 temperature를 생략한다. **위험 태깅은 이전의 provider 기본값에서 명시적 0으로 바뀌므로**, 기존 결과와 통제 비교하려면 이 차이를 반영해야 한다. 생략한 생성 옵션은 provider 기본값이며 추정하지 않는다.
 
-`metadata.evaluationProvenance`에는 실행 서버의 소스 파일 해시, 실제 검색 문서 해시, 검색 설정이 포함된다. 원문이나 검색 문서 자체는 이 메타데이터에 넣지 않는다. 배포 환경에서 `GIT_SHA`, `PROMPT_VERSION`, `RULE_VERSION`, `RAG_VERSION`, `RAG_INDEX_SHA256`을 제공하면 함께 기록한다. 로컬 파일 해시를 원격 배포·RAG 인덱스 해시로 가장하지 않는다. 구버전 서버·오프라인 예측에 없는 실제 설정/배포 정보는 null·빈 목록·미확인 건수로 남긴다. 모델 SDK의 추가 네트워크 호출은 이 메타데이터 생성에 없다.
+`metadata.evaluationProvenance`에는 실행 서버의 소스 파일 해시, 실제 검색 문서 해시, 검색 설정이 포함된다. 원문이나 검색 문서 자체는 이 메타데이터에 넣지 않는다. 프롬프트 버전은 실제 로드된 `RISK_PROMPT_VERSION` 상수에서 기록하며 `PROMPT_VERSION` 환경변수로 대체하지 않는다. 배포 환경에서 `GIT_SHA`, `RULE_VERSION`, `RAG_VERSION`, `RAG_INDEX_SHA256`을 제공하면 함께 기록한다. 로컬 파일 해시를 원격 배포·RAG 인덱스 해시로 가장하지 않는다. 구버전 서버·오프라인 예측에 없는 실제 설정/배포 정보는 null·빈 목록·미확인 건수로 남긴다. 모델 SDK의 추가 네트워크 호출은 이 메타데이터 생성에 없다.
 
 ## 리뷰 보완 사항
 

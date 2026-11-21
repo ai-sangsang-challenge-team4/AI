@@ -76,15 +76,21 @@ def test_one_output_retry_can_recover(first):
 
 
 @pytest.mark.parametrize("temperature", [0.7, None])
-def test_metadata_records_effective_generation_temperature(temperature):
+def test_analyze_returns_only_backend_metadata_and_preserves_effective_temperature(temperature):
     client = FakeLlm()
     client.generation_settings = {"max_tokens": 4096}
     if temperature is not None:
         client.generation_settings["temperature"] = temperature
     result = call_analyze(client)
     assert result.status_code == 200
-    assert result.json()["metadata"]["temperature"] == temperature
-    assert result.json()["metadata"]["generationSettings"] == client.generation_settings
+    assert result.json()["metadata"] == {
+        "modelName": client.model,
+        "temperature": temperature,
+    }
+
+    internal = make_service(client).analyze(complaint="입력 원문", rule_results=[])
+    assert internal.metadata.generationSettings == client.generation_settings
+    assert internal.metadata.evaluationProvenance is not None
 
 
 @pytest.mark.parametrize("offsets", [(0, 5), (1, 4)])

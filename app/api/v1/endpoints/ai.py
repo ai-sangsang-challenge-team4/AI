@@ -42,6 +42,8 @@ def get_ai_service():
 @router.post(
     "/analyze",
     response_model=LlmRiskAnalysisResult,
+    # Backend strictly deserializes metadata with only modelName and temperature.
+    response_model_exclude={"metadata": {"generationSettings", "evaluationProvenance"}},
     summary="학부모 민원 위험 요소 2차 분석",
     description=(
         "Rule 기반 1차 위험 탐지 결과와 학부모 민원 내용을 함께 분석하여 "

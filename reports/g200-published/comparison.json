@@ -1,0 +1,596 @@
+{
+  "status": "descriptive_not_controlled_ab",
+  "dataset_sha256": "5adb7a882b08456240f629f080e77809c4e3b1ed796dd39f2aea43a5cf0d98e4",
+  "common_paired_cases": 200,
+  "complete_200_case_comparison": true,
+  "tag_scope": [
+    "PROFANITY",
+    "INSULT",
+    "THREAT",
+    "LEGAL",
+    "EXPOSURE",
+    "UNFAIR_REQUEST",
+    "PRIVACY"
+  ],
+  "excluded": [
+    "REPEAT"
+  ],
+  "runs": {
+    "rule": {
+      "requested_cases": 200,
+      "successful_cases": 200,
+      "common_paired_cases": 200,
+      "macro": {
+        "present": {
+          "macro_precision": 0.0,
+          "macro_recall": 0.0,
+          "macro_f1": 0.0
+        },
+        "present_boundary": {
+          "macro_precision": 0.7316926770708283,
+          "macro_recall": 0.22559200345578057,
+          "macro_f1": 0.29908074046005073
+        }
+      },
+      "micro": {
+        "present": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "present_boundary": {
+          "precision": 0.7674418604651163,
+          "recall": 0.22448979591836735,
+          "f1": 0.3473684210526316
+        }
+      },
+      "per_tag": {
+        "present": {
+          "PROFANITY": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "tp": 0,
+            "fp": 0,
+            "fn": 18,
+            "tn": 182
+          },
+          "INSULT": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "tp": 0,
+            "fp": 0,
+            "fn": 20,
+            "tn": 180
+          },
+          "THREAT": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "tp": 0,
+            "fp": 0,
+            "fn": 30,
+            "tn": 170
+          },
+          "LEGAL": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "tp": 0,
+            "fp": 0,
+            "fn": 19,
+            "tn": 181
+          },
+          "EXPOSURE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "tp": 0,
+            "fp": 0,
+            "fn": 13,
+            "tn": 187
+          },
+          "UNFAIR_REQUEST": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "tp": 0,
+            "fp": 0,
+            "fn": 14,
+            "tn": 182
+          },
+          "PRIVACY": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "tp": 0,
+            "fp": 0,
+            "fn": 9,
+            "tn": 191
+          }
+        },
+        "present_boundary": {
+          "PROFANITY": {
+            "precision": 0.8571428571428571,
+            "recall": 0.2727272727272727,
+            "f1": 0.41379310344827586,
+            "tp": 6,
+            "fp": 1,
+            "fn": 16,
+            "tn": 177
+          },
+          "INSULT": {
+            "precision": 1.0,
+            "recall": 0.08333333333333333,
+            "f1": 0.15384615384615385,
+            "tp": 2,
+            "fp": 0,
+            "fn": 22,
+            "tn": 176
+          },
+          "THREAT": {
+            "precision": 1.0,
+            "recall": 0.15384615384615385,
+            "f1": 0.26666666666666666,
+            "tp": 6,
+            "fp": 0,
+            "fn": 33,
+            "tn": 161
+          },
+          "LEGAL": {
+            "precision": 0.7647058823529411,
+            "recall": 0.6842105263157895,
+            "f1": 0.7222222222222222,
+            "tp": 13,
+            "fp": 4,
+            "fn": 6,
+            "tn": 177
+          },
+          "EXPOSURE": {
+            "precision": 0.5,
+            "recall": 0.29411764705882354,
+            "f1": 0.37037037037037035,
+            "tp": 5,
+            "fp": 5,
+            "fn": 12,
+            "tn": 178
+          },
+          "UNFAIR_REQUEST": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "tp": 0,
+            "fp": 0,
+            "fn": 15,
+            "tn": 181
+          },
+          "PRIVACY": {
+            "precision": 1.0,
+            "recall": 0.09090909090909091,
+            "f1": 0.16666666666666666,
+            "tp": 1,
+            "fp": 0,
+            "fn": 10,
+            "tn": 189
+          }
+        }
+      },
+      "latency_ms": {
+        "count": 0,
+        "mean": null,
+        "median": null
+      },
+      "manifest_mode": "rule_llm"
+    },
+    "llm": {
+      "requested_cases": 200,
+      "successful_cases": 200,
+      "common_paired_cases": 200,
+      "macro": {
+        "present": {
+          "macro_precision": 0.7527417574415273,
+          "macro_recall": 0.9513247404224848,
+          "macro_f1": 0.8152621752901522
+        },
+        "present_boundary": {
+          "macro_precision": 0.7829997326254617,
+          "macro_recall": 0.9735418090681248,
+          "macro_f1": 0.8498185516492153
+        }
+      },
+      "micro": {
+        "present": {
+          "precision": 0.6882352941176471,
+          "recall": 0.9512195121951219,
+          "f1": 0.7986348122866894
+        },
+        "present_boundary": {
+          "precision": 0.7384615384615385,
+          "recall": 0.9795918367346939,
+          "f1": 0.8421052631578947
+        }
+      },
+      "per_tag": {
+        "present": {
+          "PROFANITY": {
+            "precision": 0.7894736842105263,
+            "recall": 0.8333333333333334,
+            "f1": 0.8108108108108109,
+            "tp": 15,
+            "fp": 4,
+            "fn": 3,
+            "tn": 178
+          },
+          "INSULT": {
+            "precision": 0.8260869565217391,
+            "recall": 0.95,
+            "f1": 0.8837209302325582,
+            "tp": 19,
+            "fp": 4,
+            "fn": 1,
+            "tn": 176
+          },
+          "THREAT": {
+            "precision": 0.6382978723404256,
+            "recall": 1.0,
+            "f1": 0.7792207792207793,
+            "tp": 30,
+            "fp": 17,
+            "fn": 0,
+            "tn": 153
+          },
+          "LEGAL": {
+            "precision": 0.9473684210526315,
+            "recall": 0.9473684210526315,
+            "f1": 0.9473684210526315,
+            "tp": 18,
+            "fp": 1,
+            "fn": 1,
+            "tn": 180
+          },
+          "EXPOSURE": {
+            "precision": 0.8666666666666667,
+            "recall": 1.0,
+            "f1": 0.9285714285714286,
+            "tp": 13,
+            "fp": 2,
+            "fn": 0,
+            "tn": 185
+          },
+          "UNFAIR_REQUEST": {
+            "precision": 0.9285714285714286,
+            "recall": 0.9285714285714286,
+            "f1": 0.9285714285714286,
+            "tp": 13,
+            "fp": 1,
+            "fn": 1,
+            "tn": 181
+          },
+          "PRIVACY": {
+            "precision": 0.2727272727272727,
+            "recall": 1.0,
+            "f1": 0.42857142857142855,
+            "tp": 9,
+            "fp": 24,
+            "fn": 0,
+            "tn": 167
+          }
+        },
+        "present_boundary": {
+          "PROFANITY": {
+            "precision": 0.7857142857142857,
+            "recall": 1.0,
+            "f1": 0.88,
+            "tp": 22,
+            "fp": 6,
+            "fn": 0,
+            "tn": 172
+          },
+          "INSULT": {
+            "precision": 0.8846153846153846,
+            "recall": 0.9583333333333334,
+            "f1": 0.92,
+            "tp": 23,
+            "fp": 3,
+            "fn": 1,
+            "tn": 173
+          },
+          "THREAT": {
+            "precision": 0.7358490566037735,
+            "recall": 1.0,
+            "f1": 0.8478260869565217,
+            "tp": 39,
+            "fp": 14,
+            "fn": 0,
+            "tn": 147
+          },
+          "LEGAL": {
+            "precision": 0.9473684210526315,
+            "recall": 0.9473684210526315,
+            "f1": 0.9473684210526315,
+            "tp": 18,
+            "fp": 1,
+            "fn": 1,
+            "tn": 180
+          },
+          "EXPOSURE": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "tp": 17,
+            "fp": 0,
+            "fn": 0,
+            "tn": 183
+          },
+          "UNFAIR_REQUEST": {
+            "precision": 0.8333333333333334,
+            "recall": 1.0,
+            "f1": 0.9090909090909091,
+            "tp": 15,
+            "fp": 3,
+            "fn": 0,
+            "tn": 178
+          },
+          "PRIVACY": {
+            "precision": 0.29411764705882354,
+            "recall": 0.9090909090909091,
+            "f1": 0.4444444444444444,
+            "tp": 10,
+            "fp": 24,
+            "fn": 1,
+            "tn": 165
+          }
+        }
+      },
+      "latency_ms": {
+        "count": 200,
+        "mean": 17735.672549365845,
+        "median": 17552.13289600215
+      },
+      "manifest_mode": "llm"
+    },
+    "rule_llm": {
+      "requested_cases": 200,
+      "successful_cases": 200,
+      "common_paired_cases": 200,
+      "macro": {
+        "present": {
+          "macro_precision": 0.7473233200436847,
+          "macro_recall": 0.9557910343624629,
+          "macro_f1": 0.8141783029001075
+        },
+        "present_boundary": {
+          "macro_precision": 0.7805824084019574,
+          "macro_recall": 0.9810606060606062,
+          "macro_f1": 0.8508235993255246
+        }
+      },
+      "micro": {
+        "present": {
+          "precision": 0.686046511627907,
+          "recall": 0.959349593495935,
+          "f1": 0.8
+        },
+        "present_boundary": {
+          "precision": 0.7323232323232324,
+          "recall": 0.9863945578231292,
+          "f1": 0.8405797101449275
+        }
+      },
+      "per_tag": {
+        "present": {
+          "PROFANITY": {
+            "precision": 0.8,
+            "recall": 0.8888888888888888,
+            "f1": 0.8421052631578947,
+            "tp": 16,
+            "fp": 4,
+            "fn": 2,
+            "tn": 178
+          },
+          "INSULT": {
+            "precision": 0.7916666666666666,
+            "recall": 0.95,
+            "f1": 0.8636363636363636,
+            "tp": 19,
+            "fp": 5,
+            "fn": 1,
+            "tn": 175
+          },
+          "THREAT": {
+            "precision": 0.6382978723404256,
+            "recall": 1.0,
+            "f1": 0.7792207792207793,
+            "tp": 30,
+            "fp": 17,
+            "fn": 0,
+            "tn": 153
+          },
+          "LEGAL": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "tp": 19,
+            "fp": 0,
+            "fn": 0,
+            "tn": 181
+          },
+          "EXPOSURE": {
+            "precision": 0.8,
+            "recall": 0.9230769230769231,
+            "f1": 0.8571428571428571,
+            "tp": 12,
+            "fp": 3,
+            "fn": 1,
+            "tn": 184
+          },
+          "UNFAIR_REQUEST": {
+            "precision": 0.9285714285714286,
+            "recall": 0.9285714285714286,
+            "f1": 0.9285714285714286,
+            "tp": 13,
+            "fp": 1,
+            "fn": 1,
+            "tn": 181
+          },
+          "PRIVACY": {
+            "precision": 0.2727272727272727,
+            "recall": 1.0,
+            "f1": 0.42857142857142855,
+            "tp": 9,
+            "fp": 24,
+            "fn": 0,
+            "tn": 167
+          }
+        },
+        "present_boundary": {
+          "PROFANITY": {
+            "precision": 0.8148148148148148,
+            "recall": 1.0,
+            "f1": 0.8979591836734694,
+            "tp": 22,
+            "fp": 5,
+            "fn": 0,
+            "tn": 173
+          },
+          "INSULT": {
+            "precision": 0.8518518518518519,
+            "recall": 0.9583333333333334,
+            "f1": 0.9019607843137255,
+            "tp": 23,
+            "fp": 4,
+            "fn": 1,
+            "tn": 172
+          },
+          "THREAT": {
+            "precision": 0.7222222222222222,
+            "recall": 1.0,
+            "f1": 0.8387096774193549,
+            "tp": 39,
+            "fp": 15,
+            "fn": 0,
+            "tn": 146
+          },
+          "LEGAL": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "tp": 19,
+            "fp": 0,
+            "fn": 0,
+            "tn": 181
+          },
+          "EXPOSURE": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "tp": 17,
+            "fp": 0,
+            "fn": 0,
+            "tn": 183
+          },
+          "UNFAIR_REQUEST": {
+            "precision": 0.7894736842105263,
+            "recall": 1.0,
+            "f1": 0.8823529411764706,
+            "tp": 15,
+            "fp": 4,
+            "fn": 0,
+            "tn": 177
+          },
+          "PRIVACY": {
+            "precision": 0.2857142857142857,
+            "recall": 0.9090909090909091,
+            "f1": 0.43478260869565216,
+            "tp": 10,
+            "fp": 25,
+            "fn": 1,
+            "tn": 164
+          }
+        }
+      },
+      "latency_ms": {
+        "count": 200,
+        "mean": 17871.651205630333,
+        "median": 17599.38666701055
+      },
+      "manifest_mode": "rule_llm"
+    }
+  },
+  "comparisons": {
+    "rule_vs_llm": {
+      "mcnemar_case_exact": {
+        "unit": "case_all_7_tags_exact",
+        "left_only_correct": 20,
+        "right_only_correct": 67,
+        "exact_two_sided_p": 4.3053681250011924e-07
+      },
+      "present": {
+        "macro_f1_difference": 0.8152621752901522,
+        "paired_case_bootstrap_95pct_ci": [
+          0.7616363630685881,
+          0.8550116618044082
+        ]
+      },
+      "present_boundary": {
+        "macro_f1_difference": 0.5507378111891645,
+        "paired_case_bootstrap_95pct_ci": [
+          0.4569649897497593,
+          0.6458507070486933
+        ]
+      }
+    },
+    "llm_vs_rule_llm": {
+      "mcnemar_case_exact": {
+        "unit": "case_all_7_tags_exact",
+        "left_only_correct": 5,
+        "right_only_correct": 6,
+        "exact_two_sided_p": 1.0
+      },
+      "present": {
+        "macro_f1_difference": -0.0010838723900447045,
+        "paired_case_bootstrap_95pct_ci": [
+          -0.024361440818135627,
+          0.020924038528675193
+        ]
+      },
+      "present_boundary": {
+        "macro_f1_difference": 0.0010050476763093785,
+        "paired_case_bootstrap_95pct_ci": [
+          -0.017120357284760357,
+          0.01957846761267157
+        ]
+      }
+    },
+    "rule_vs_rule_llm": {
+      "mcnemar_case_exact": {
+        "unit": "case_all_7_tags_exact",
+        "left_only_correct": 21,
+        "right_only_correct": 69,
+        "exact_two_sided_p": 3.881817444056319e-07
+      },
+      "present": {
+        "macro_f1_difference": 0.8141783029001075,
+        "paired_case_bootstrap_95pct_ci": [
+          0.7626696987223304,
+          0.852937993300511
+        ]
+      },
+      "present_boundary": {
+        "macro_f1_difference": 0.5517428588654739,
+        "paired_case_bootstrap_95pct_ci": [
+          0.45906536282800353,
+          0.6493974765470222
+        ]
+      }
+    }
+  },
+  "limitations": [
+    "Model, prompt, RAG, masking, and SDK settings must be checked independently before causal claims.",
+    "Rule-only/Backend final captures can use different input preprocessing than direct AI calls.",
+    "Latency may include different processing stages; do not label it an apples-to-apples speed comparison.",
+    "Risk Engine scores and final LOW/MEDIUM/HIGH/EMERGENCY risk levels are outside this tagging experiment.",
+    "No LLM API calls are performed by this script."
+  ]
+}

@@ -1,0 +1,1993 @@
+{
+  "per_tag": {
+    "PROFANITY": {
+      "evaluated_labels": 200,
+      "exact_state_accuracy": 0.95,
+      "confusion_matrix": {
+        "PRESENT": {
+          "PRESENT": 15,
+          "ABSENT": 0,
+          "BOUNDARY": 3,
+          "UNKNOWN": 0
+        },
+        "ABSENT": {
+          "PRESENT": 3,
+          "ABSENT": 172,
+          "BOUNDARY": 3,
+          "UNKNOWN": 0
+        },
+        "BOUNDARY": {
+          "PRESENT": 1,
+          "ABSENT": 0,
+          "BOUNDARY": 3,
+          "UNKNOWN": 0
+        },
+        "UNKNOWN": {
+          "PRESENT": 0,
+          "ABSENT": 0,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        }
+      },
+      "binary": {
+        "present": {
+          "tp": 15,
+          "fp": 4,
+          "fn": 3,
+          "tn": 178,
+          "evaluated_labels": 200,
+          "excluded_gold_unknown": 0,
+          "gold_positive": 18,
+          "predicted_positive": 19,
+          "precision": 0.7894736842105263,
+          "recall": 0.8333333333333334,
+          "f1": 0.8108108108108109
+        },
+        "present_boundary": {
+          "tp": 22,
+          "fp": 6,
+          "fn": 0,
+          "tn": 172,
+          "evaluated_labels": 200,
+          "excluded_gold_unknown": 0,
+          "gold_positive": 22,
+          "predicted_positive": 28,
+          "precision": 0.7857142857142857,
+          "recall": 1.0,
+          "f1": 0.88
+        }
+      }
+    },
+    "INSULT": {
+      "evaluated_labels": 200,
+      "exact_state_accuracy": 0.97,
+      "confusion_matrix": {
+        "PRESENT": {
+          "PRESENT": 19,
+          "ABSENT": 0,
+          "BOUNDARY": 1,
+          "UNKNOWN": 0
+        },
+        "ABSENT": {
+          "PRESENT": 3,
+          "ABSENT": 173,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        },
+        "BOUNDARY": {
+          "PRESENT": 1,
+          "ABSENT": 1,
+          "BOUNDARY": 2,
+          "UNKNOWN": 0
+        },
+        "UNKNOWN": {
+          "PRESENT": 0,
+          "ABSENT": 0,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        }
+      },
+      "binary": {
+        "present": {
+          "tp": 19,
+          "fp": 4,
+          "fn": 1,
+          "tn": 176,
+          "evaluated_labels": 200,
+          "excluded_gold_unknown": 0,
+          "gold_positive": 20,
+          "predicted_positive": 23,
+          "precision": 0.8260869565217391,
+          "recall": 0.95,
+          "f1": 0.8837209302325582
+        },
+        "present_boundary": {
+          "tp": 23,
+          "fp": 3,
+          "fn": 1,
+          "tn": 173,
+          "evaluated_labels": 200,
+          "excluded_gold_unknown": 0,
+          "gold_positive": 24,
+          "predicted_positive": 26,
+          "precision": 0.8846153846153846,
+          "recall": 0.9583333333333334,
+          "f1": 0.92
+        }
+      }
+    },
+    "THREAT": {
+      "evaluated_labels": 200,
+      "exact_state_accuracy": 0.905,
+      "confusion_matrix": {
+        "PRESENT": {
+          "PRESENT": 30,
+          "ABSENT": 0,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        },
+        "ABSENT": {
+          "PRESENT": 12,
+          "ABSENT": 147,
+          "BOUNDARY": 2,
+          "UNKNOWN": 0
+        },
+        "BOUNDARY": {
+          "PRESENT": 5,
+          "ABSENT": 0,
+          "BOUNDARY": 4,
+          "UNKNOWN": 0
+        },
+        "UNKNOWN": {
+          "PRESENT": 0,
+          "ABSENT": 0,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        }
+      },
+      "binary": {
+        "present": {
+          "tp": 30,
+          "fp": 17,
+          "fn": 0,
+          "tn": 153,
+          "evaluated_labels": 200,
+          "excluded_gold_unknown": 0,
+          "gold_positive": 30,
+          "predicted_positive": 47,
+          "precision": 0.6382978723404256,
+          "recall": 1.0,
+          "f1": 0.7792207792207793
+        },
+        "present_boundary": {
+          "tp": 39,
+          "fp": 14,
+          "fn": 0,
+          "tn": 147,
+          "evaluated_labels": 200,
+          "excluded_gold_unknown": 0,
+          "gold_positive": 39,
+          "predicted_positive": 53,
+          "precision": 0.7358490566037735,
+          "recall": 1.0,
+          "f1": 0.8478260869565217
+        }
+      }
+    },
+    "LEGAL": {
+      "evaluated_labels": 200,
+      "exact_state_accuracy": 0.99,
+      "confusion_matrix": {
+        "PRESENT": {
+          "PRESENT": 18,
+          "ABSENT": 1,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        },
+        "ABSENT": {
+          "PRESENT": 1,
+          "ABSENT": 180,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        },
+        "BOUNDARY": {
+          "PRESENT": 0,
+          "ABSENT": 0,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        },
+        "UNKNOWN": {
+          "PRESENT": 0,
+          "ABSENT": 0,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        }
+      },
+      "binary": {
+        "present": {
+          "tp": 18,
+          "fp": 1,
+          "fn": 1,
+          "tn": 180,
+          "evaluated_labels": 200,
+          "excluded_gold_unknown": 0,
+          "gold_positive": 19,
+          "predicted_positive": 19,
+          "precision": 0.9473684210526315,
+          "recall": 0.9473684210526315,
+          "f1": 0.9473684210526315
+        },
+        "present_boundary": {
+          "tp": 18,
+          "fp": 1,
+          "fn": 1,
+          "tn": 180,
+          "evaluated_labels": 200,
+          "excluded_gold_unknown": 0,
+          "gold_positive": 19,
+          "predicted_positive": 19,
+          "precision": 0.9473684210526315,
+          "recall": 0.9473684210526315,
+          "f1": 0.9473684210526315
+        }
+      }
+    },
+    "EXPOSURE": {
+      "evaluated_labels": 200,
+      "exact_state_accuracy": 0.99,
+      "confusion_matrix": {
+        "PRESENT": {
+          "PRESENT": 13,
+          "ABSENT": 0,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        },
+        "ABSENT": {
+          "PRESENT": 0,
+          "ABSENT": 183,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        },
+        "BOUNDARY": {
+          "PRESENT": 2,
+          "ABSENT": 0,
+          "BOUNDARY": 2,
+          "UNKNOWN": 0
+        },
+        "UNKNOWN": {
+          "PRESENT": 0,
+          "ABSENT": 0,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        }
+      },
+      "binary": {
+        "present": {
+          "tp": 13,
+          "fp": 2,
+          "fn": 0,
+          "tn": 185,
+          "evaluated_labels": 200,
+          "excluded_gold_unknown": 0,
+          "gold_positive": 13,
+          "predicted_positive": 15,
+          "precision": 0.8666666666666667,
+          "recall": 1.0,
+          "f1": 0.9285714285714286
+        },
+        "present_boundary": {
+          "tp": 17,
+          "fp": 0,
+          "fn": 0,
+          "tn": 183,
+          "evaluated_labels": 200,
+          "excluded_gold_unknown": 0,
+          "gold_positive": 17,
+          "predicted_positive": 17,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        }
+      }
+    },
+    "UNFAIR_REQUEST": {
+      "evaluated_labels": 200,
+      "exact_state_accuracy": 0.955,
+      "confusion_matrix": {
+        "PRESENT": {
+          "PRESENT": 13,
+          "ABSENT": 0,
+          "BOUNDARY": 1,
+          "UNKNOWN": 0
+        },
+        "ABSENT": {
+          "PRESENT": 0,
+          "ABSENT": 178,
+          "BOUNDARY": 3,
+          "UNKNOWN": 0
+        },
+        "BOUNDARY": {
+          "PRESENT": 1,
+          "ABSENT": 0,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        },
+        "UNKNOWN": {
+          "PRESENT": 2,
+          "ABSENT": 1,
+          "BOUNDARY": 1,
+          "UNKNOWN": 0
+        }
+      },
+      "binary": {
+        "present": {
+          "tp": 13,
+          "fp": 1,
+          "fn": 1,
+          "tn": 181,
+          "evaluated_labels": 196,
+          "excluded_gold_unknown": 4,
+          "gold_positive": 14,
+          "predicted_positive": 14,
+          "precision": 0.9285714285714286,
+          "recall": 0.9285714285714286,
+          "f1": 0.9285714285714286
+        },
+        "present_boundary": {
+          "tp": 15,
+          "fp": 3,
+          "fn": 0,
+          "tn": 178,
+          "evaluated_labels": 196,
+          "excluded_gold_unknown": 4,
+          "gold_positive": 15,
+          "predicted_positive": 18,
+          "precision": 0.8333333333333334,
+          "recall": 1.0,
+          "f1": 0.9090909090909091
+        }
+      }
+    },
+    "PRIVACY": {
+      "evaluated_labels": 200,
+      "exact_state_accuracy": 0.87,
+      "confusion_matrix": {
+        "PRESENT": {
+          "PRESENT": 9,
+          "ABSENT": 0,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        },
+        "ABSENT": {
+          "PRESENT": 23,
+          "ABSENT": 165,
+          "BOUNDARY": 1,
+          "UNKNOWN": 0
+        },
+        "BOUNDARY": {
+          "PRESENT": 1,
+          "ABSENT": 1,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        },
+        "UNKNOWN": {
+          "PRESENT": 0,
+          "ABSENT": 0,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        }
+      },
+      "binary": {
+        "present": {
+          "tp": 9,
+          "fp": 24,
+          "fn": 0,
+          "tn": 167,
+          "evaluated_labels": 200,
+          "excluded_gold_unknown": 0,
+          "gold_positive": 9,
+          "predicted_positive": 33,
+          "precision": 0.2727272727272727,
+          "recall": 1.0,
+          "f1": 0.42857142857142855
+        },
+        "present_boundary": {
+          "tp": 10,
+          "fp": 24,
+          "fn": 1,
+          "tn": 165,
+          "evaluated_labels": 200,
+          "excluded_gold_unknown": 0,
+          "gold_positive": 11,
+          "predicted_positive": 34,
+          "precision": 0.29411764705882354,
+          "recall": 0.9090909090909091,
+          "f1": 0.4444444444444444
+        }
+      }
+    }
+  },
+  "binary": {
+    "present": {
+      "micro": {
+        "tp": 117,
+        "fp": 53,
+        "fn": 6,
+        "tn": 1220,
+        "evaluated_labels": 1396,
+        "excluded_gold_unknown": 4,
+        "gold_positive": 123,
+        "predicted_positive": 170,
+        "precision": 0.6882352941176471,
+        "recall": 0.9512195121951219,
+        "f1": 0.7986348122866894
+      },
+      "macro_precision": 0.7527417574415273,
+      "macro_recall": 0.9513247404224848,
+      "macro_f1": 0.8152621752901522,
+      "macro_tag_denominator": 7
+    },
+    "present_boundary": {
+      "micro": {
+        "tp": 144,
+        "fp": 51,
+        "fn": 3,
+        "tn": 1198,
+        "evaluated_labels": 1396,
+        "excluded_gold_unknown": 4,
+        "gold_positive": 147,
+        "predicted_positive": 195,
+        "precision": 0.7384615384615385,
+        "recall": 0.9795918367346939,
+        "f1": 0.8421052631578947
+      },
+      "macro_precision": 0.7829997326254617,
+      "macro_recall": 0.9735418090681248,
+      "macro_f1": 0.8498185516492153,
+      "macro_tag_denominator": 7
+    }
+  },
+  "confusion_matrix": {
+    "PRESENT": {
+      "PRESENT": 117,
+      "ABSENT": 1,
+      "BOUNDARY": 5,
+      "UNKNOWN": 0
+    },
+    "ABSENT": {
+      "PRESENT": 42,
+      "ABSENT": 1198,
+      "BOUNDARY": 9,
+      "UNKNOWN": 0
+    },
+    "BOUNDARY": {
+      "PRESENT": 11,
+      "ABSENT": 2,
+      "BOUNDARY": 11,
+      "UNKNOWN": 0
+    },
+    "UNKNOWN": {
+      "PRESENT": 2,
+      "ABSENT": 1,
+      "BOUNDARY": 1,
+      "UNKNOWN": 0
+    }
+  },
+  "tag_exact_match": {
+    "matched": 1326,
+    "denominator": 1400,
+    "rate": 0.9471428571428572
+  },
+  "all_tags_exact_match": {
+    "matched_cases": 136,
+    "successful_complete_cases": 200,
+    "rate": 0.68,
+    "requested_cases": 200,
+    "requested_case_rate": 0.68
+  },
+  "denominators": {
+    "requested_cases": 200,
+    "successful_cases": 200,
+    "successful_labels": 1400,
+    "failed_labels": 0,
+    "out_of_scope_labels": 200
+  },
+  "evidence": {
+    "policy": "whitespace_substring_grounded_complaint_v1",
+    "matched_labels": 138,
+    "evaluable_labels": 142,
+    "match_rate": 0.971830985915493,
+    "excluded_labels": 1258,
+    "exclusion_reasons": {
+      "gold_state_not_present_or_boundary": 1253,
+      "gold_evidence_missing": 4,
+      "gold_evidence_not_in_complaint": 1
+    },
+    "predicted_spans": 230,
+    "grounded_spans": 230,
+    "ungrounded_spans": 0,
+    "grounding_rate": 1.0
+  },
+  "context_subtypes": {
+    "kind": "gold_context_cohorts_not_subtype_prediction_accuracy",
+    "overlapping_cohorts": true,
+    "per_tag": {
+      "PRIVACY": {
+        "PII_INCLUDED": {
+          "annotated_labels": 0,
+          "successful_labels": 0,
+          "failed_labels": 0,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "tn": 0,
+              "evaluated_labels": 0,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 0,
+              "predicted_positive": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            },
+            "present_boundary": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "tn": 0,
+              "evaluated_labels": 0,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 0,
+              "predicted_positive": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            }
+          }
+        },
+        "MISUSE_OR_THIRD_PARTY_REQUEST": {
+          "annotated_labels": 0,
+          "successful_labels": 0,
+          "failed_labels": 0,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "tn": 0,
+              "evaluated_labels": 0,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 0,
+              "predicted_positive": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            },
+            "present_boundary": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "tn": 0,
+              "evaluated_labels": 0,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 0,
+              "predicted_positive": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            }
+          }
+        },
+        "OTHER": {
+          "annotated_labels": 0,
+          "successful_labels": 0,
+          "failed_labels": 0,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "tn": 0,
+              "evaluated_labels": 0,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 0,
+              "predicted_positive": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            },
+            "present_boundary": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "tn": 0,
+              "evaluated_labels": 0,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 0,
+              "predicted_positive": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            }
+          }
+        }
+      },
+      "THREAT": {
+        "COERCIVE_PRESSURE": {
+          "annotated_labels": 0,
+          "successful_labels": 0,
+          "failed_labels": 0,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "tn": 0,
+              "evaluated_labels": 0,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 0,
+              "predicted_positive": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            },
+            "present_boundary": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "tn": 0,
+              "evaluated_labels": 0,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 0,
+              "predicted_positive": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            }
+          }
+        },
+        "PHYSICAL_HARM": {
+          "annotated_labels": 0,
+          "successful_labels": 0,
+          "failed_labels": 0,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "tn": 0,
+              "evaluated_labels": 0,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 0,
+              "predicted_positive": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            },
+            "present_boundary": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "tn": 0,
+              "evaluated_labels": 0,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 0,
+              "predicted_positive": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            }
+          }
+        },
+        "OTHER": {
+          "annotated_labels": 0,
+          "successful_labels": 0,
+          "failed_labels": 0,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "tn": 0,
+              "evaluated_labels": 0,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 0,
+              "predicted_positive": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            },
+            "present_boundary": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "tn": 0,
+              "evaluated_labels": 0,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 0,
+              "predicted_positive": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            }
+          }
+        }
+      }
+    }
+  },
+  "final_risk": {
+    "status": "not_evaluated",
+    "annotated_cases": 0,
+    "successful_cases": 0,
+    "failed_cases": 0,
+    "failure_codes": {},
+    "confusion_matrix": {
+      "LOW": {
+        "LOW": 0,
+        "MEDIUM": 0,
+        "HIGH": 0,
+        "EMERGENCY": 0
+      },
+      "MEDIUM": {
+        "LOW": 0,
+        "MEDIUM": 0,
+        "HIGH": 0,
+        "EMERGENCY": 0
+      },
+      "HIGH": {
+        "LOW": 0,
+        "MEDIUM": 0,
+        "HIGH": 0,
+        "EMERGENCY": 0
+      },
+      "EMERGENCY": {
+        "LOW": 0,
+        "MEDIUM": 0,
+        "HIGH": 0,
+        "EMERGENCY": 0
+      }
+    },
+    "class_recall": {
+      "HIGH": {
+        "correct": 0,
+        "support": 0,
+        "recall": null
+      },
+      "EMERGENCY": {
+        "correct": 0,
+        "support": 0,
+        "recall": null
+      }
+    },
+    "high_or_emergency_recall": null,
+    "emergency_missed_case_ids": [],
+    "legitimate_overestimation": {
+      "overestimated": 0,
+      "denominator": 0,
+      "rate": null,
+      "policy": "predicted_level > confirmed_gold_level"
+    }
+  },
+  "versions": {
+    "models": {
+      "claude-sonnet-4-6": 200
+    },
+    "prompt": {
+      "version": "sha256:51243889254ecd9e16b7e079fb64238264bf0ac318b5759d49a54876206eae46",
+      "sha256": "51243889254ecd9e16b7e079fb64238264bf0ac318b5759d49a54876206eae46",
+      "path": "/Users/yeonwoo/Desktop/AI/app/rag/prompt.py",
+      "source": "local_checkout; not proof of remote deployment"
+    },
+    "rule": {
+      "version": "none",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "source": "empty_rule_results"
+    },
+    "dataset": {
+      "version": "sha256:5adb7a882b08456240f629f080e77809c4e3b1ed796dd39f2aea43a5cf0d98e4",
+      "sha256": "5adb7a882b08456240f629f080e77809c4e3b1ed796dd39f2aea43a5cf0d98e4",
+      "files": {
+        "TeacherCare_goldenset_200cases.csv": "6320eb6270afc7db77588b763ab9d9b9538ed01b60567ea5126f00fc91c97cca",
+        "TeacherCare_goldenset_200risktages.csv": "5b6e3a0688baf2e7fcc0b0de54024d0856c6621d2e86fbdc75deb731691804b7"
+      }
+    },
+    "rag": {
+      "version": "sha256:b76fac701644441d2c0f5b5d8203f346923858d2f7cb507e57569ff83bce2685",
+      "sha256": "b76fac701644441d2c0f5b5d8203f346923858d2f7cb507e57569ff83bce2685",
+      "path": "/Users/yeonwoo/Desktop/AI/app/rag/retriever.py",
+      "source": "local_retriever_source; corpus/index hash requires server provenance"
+    },
+    "codebook": {
+      "version": "v1-2026-11-09",
+      "sha256": null,
+      "source": "caller_declaration; codebook file not bundled"
+    }
+  },
+  "review_groups": {
+    "teacher_reviewed": {
+      "per_tag": {
+        "PROFANITY": {
+          "evaluated_labels": 50,
+          "exact_state_accuracy": 1.0,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 3,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 0,
+              "ABSENT": 44,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 3,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 3,
+              "fp": 0,
+              "fn": 0,
+              "tn": 47,
+              "evaluated_labels": 50,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 3,
+              "predicted_positive": 3,
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "present_boundary": {
+              "tp": 6,
+              "fp": 0,
+              "fn": 0,
+              "tn": 44,
+              "evaluated_labels": 50,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 6,
+              "predicted_positive": 6,
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            }
+          }
+        },
+        "INSULT": {
+          "evaluated_labels": 50,
+          "exact_state_accuracy": 0.98,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 4,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 1,
+              "ABSENT": 45,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 4,
+              "fp": 1,
+              "fn": 0,
+              "tn": 45,
+              "evaluated_labels": 50,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 4,
+              "predicted_positive": 5,
+              "precision": 0.8,
+              "recall": 1.0,
+              "f1": 0.8888888888888888
+            },
+            "present_boundary": {
+              "tp": 4,
+              "fp": 1,
+              "fn": 0,
+              "tn": 45,
+              "evaluated_labels": 50,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 4,
+              "predicted_positive": 5,
+              "precision": 0.8,
+              "recall": 1.0,
+              "f1": 0.8888888888888888
+            }
+          }
+        },
+        "THREAT": {
+          "evaluated_labels": 53,
+          "exact_state_accuracy": 0.9245283018867925,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 13,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 4,
+              "ABSENT": 35,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 1,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 13,
+              "fp": 4,
+              "fn": 0,
+              "tn": 36,
+              "evaluated_labels": 53,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 13,
+              "predicted_positive": 17,
+              "precision": 0.7647058823529411,
+              "recall": 1.0,
+              "f1": 0.8666666666666667
+            },
+            "present_boundary": {
+              "tp": 14,
+              "fp": 4,
+              "fn": 0,
+              "tn": 35,
+              "evaluated_labels": 53,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 14,
+              "predicted_positive": 18,
+              "precision": 0.7777777777777778,
+              "recall": 1.0,
+              "f1": 0.875
+            }
+          }
+        },
+        "LEGAL": {
+          "evaluated_labels": 52,
+          "exact_state_accuracy": 0.9807692307692307,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 4,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 1,
+              "ABSENT": 47,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 4,
+              "fp": 1,
+              "fn": 0,
+              "tn": 47,
+              "evaluated_labels": 52,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 4,
+              "predicted_positive": 5,
+              "precision": 0.8,
+              "recall": 1.0,
+              "f1": 0.8888888888888888
+            },
+            "present_boundary": {
+              "tp": 4,
+              "fp": 1,
+              "fn": 0,
+              "tn": 47,
+              "evaluated_labels": 52,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 4,
+              "predicted_positive": 5,
+              "precision": 0.8,
+              "recall": 1.0,
+              "f1": 0.8888888888888888
+            }
+          }
+        },
+        "EXPOSURE": {
+          "evaluated_labels": 50,
+          "exact_state_accuracy": 1.0,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 4,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 0,
+              "ABSENT": 46,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 4,
+              "fp": 0,
+              "fn": 0,
+              "tn": 46,
+              "evaluated_labels": 50,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 4,
+              "predicted_positive": 4,
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "present_boundary": {
+              "tp": 4,
+              "fp": 0,
+              "fn": 0,
+              "tn": 46,
+              "evaluated_labels": 50,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 4,
+              "predicted_positive": 4,
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            }
+          }
+        },
+        "UNFAIR_REQUEST": {
+          "evaluated_labels": 50,
+          "exact_state_accuracy": 0.94,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 2,
+              "ABSENT": 0,
+              "BOUNDARY": 1,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 0,
+              "ABSENT": 45,
+              "BOUNDARY": 2,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 2,
+              "fp": 0,
+              "fn": 1,
+              "tn": 47,
+              "evaluated_labels": 50,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 3,
+              "predicted_positive": 2,
+              "precision": 1.0,
+              "recall": 0.6666666666666666,
+              "f1": 0.8
+            },
+            "present_boundary": {
+              "tp": 3,
+              "fp": 2,
+              "fn": 0,
+              "tn": 45,
+              "evaluated_labels": 50,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 3,
+              "predicted_positive": 5,
+              "precision": 0.6,
+              "recall": 1.0,
+              "f1": 0.75
+            }
+          }
+        },
+        "PRIVACY": {
+          "evaluated_labels": 54,
+          "exact_state_accuracy": 0.8518518518518519,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 7,
+              "ABSENT": 46,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 1,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 0,
+              "fp": 8,
+              "fn": 0,
+              "tn": 46,
+              "evaluated_labels": 54,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 0,
+              "predicted_positive": 8,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0
+            },
+            "present_boundary": {
+              "tp": 1,
+              "fp": 7,
+              "fn": 0,
+              "tn": 46,
+              "evaluated_labels": 54,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 1,
+              "predicted_positive": 8,
+              "precision": 0.125,
+              "recall": 1.0,
+              "f1": 0.2222222222222222
+            }
+          }
+        }
+      },
+      "binary": {
+        "present": {
+          "micro": {
+            "tp": 30,
+            "fp": 14,
+            "fn": 1,
+            "tn": 314,
+            "evaluated_labels": 359,
+            "excluded_gold_unknown": 0,
+            "gold_positive": 31,
+            "predicted_positive": 44,
+            "precision": 0.6818181818181818,
+            "recall": 0.967741935483871,
+            "f1": 0.8
+          },
+          "macro_precision": 0.7663865546218487,
+          "macro_recall": 0.8095238095238095,
+          "macro_f1": 0.7777777777777777,
+          "macro_tag_denominator": 7
+        },
+        "present_boundary": {
+          "micro": {
+            "tp": 36,
+            "fp": 15,
+            "fn": 0,
+            "tn": 308,
+            "evaluated_labels": 359,
+            "excluded_gold_unknown": 0,
+            "gold_positive": 36,
+            "predicted_positive": 51,
+            "precision": 0.7058823529411765,
+            "recall": 1.0,
+            "f1": 0.8275862068965517
+          },
+          "macro_precision": 0.7289682539682539,
+          "macro_recall": 1.0,
+          "macro_f1": 0.8035714285714286,
+          "macro_tag_denominator": 7
+        }
+      },
+      "confusion_matrix": {
+        "PRESENT": {
+          "PRESENT": 30,
+          "ABSENT": 0,
+          "BOUNDARY": 1,
+          "UNKNOWN": 0
+        },
+        "ABSENT": {
+          "PRESENT": 13,
+          "ABSENT": 308,
+          "BOUNDARY": 2,
+          "UNKNOWN": 0
+        },
+        "BOUNDARY": {
+          "PRESENT": 1,
+          "ABSENT": 0,
+          "BOUNDARY": 4,
+          "UNKNOWN": 0
+        },
+        "UNKNOWN": {
+          "PRESENT": 0,
+          "ABSENT": 0,
+          "BOUNDARY": 0,
+          "UNKNOWN": 0
+        }
+      },
+      "tag_exact_match": {
+        "matched": 342,
+        "denominator": 359,
+        "rate": 0.9526462395543176
+      },
+      "all_tags_exact_match": {
+        "matched_cases": 39,
+        "successful_complete_cases": 50,
+        "rate": 0.78,
+        "requested_cases": 61,
+        "requested_case_rate": 0.639344262295082
+      },
+      "denominators": {
+        "requested_cases": 61,
+        "successful_cases": 59,
+        "successful_labels": 359,
+        "failed_labels": 0,
+        "out_of_scope_labels": 52
+      },
+      "evidence": {
+        "policy": "whitespace_substring_grounded_complaint_v1",
+        "matched_labels": 36,
+        "evaluable_labels": 36,
+        "match_rate": 1.0,
+        "excluded_labels": 323,
+        "exclusion_reasons": {
+          "gold_state_not_present_or_boundary": 323
+        },
+        "predicted_spans": 64,
+        "grounded_spans": 64,
+        "ungrounded_spans": 0,
+        "grounding_rate": 1.0
+      }
+    },
+    "unconfirmed": {
+      "per_tag": {
+        "PROFANITY": {
+          "evaluated_labels": 150,
+          "exact_state_accuracy": 0.9333333333333333,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 12,
+              "ABSENT": 0,
+              "BOUNDARY": 3,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 3,
+              "ABSENT": 128,
+              "BOUNDARY": 3,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 1,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 12,
+              "fp": 4,
+              "fn": 3,
+              "tn": 131,
+              "evaluated_labels": 150,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 15,
+              "predicted_positive": 16,
+              "precision": 0.75,
+              "recall": 0.8,
+              "f1": 0.7741935483870968
+            },
+            "present_boundary": {
+              "tp": 16,
+              "fp": 6,
+              "fn": 0,
+              "tn": 128,
+              "evaluated_labels": 150,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 16,
+              "predicted_positive": 22,
+              "precision": 0.7272727272727273,
+              "recall": 1.0,
+              "f1": 0.8421052631578947
+            }
+          }
+        },
+        "INSULT": {
+          "evaluated_labels": 150,
+          "exact_state_accuracy": 0.9666666666666667,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 15,
+              "ABSENT": 0,
+              "BOUNDARY": 1,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 2,
+              "ABSENT": 128,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 1,
+              "ABSENT": 1,
+              "BOUNDARY": 2,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 15,
+              "fp": 3,
+              "fn": 1,
+              "tn": 131,
+              "evaluated_labels": 150,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 16,
+              "predicted_positive": 18,
+              "precision": 0.8333333333333334,
+              "recall": 0.9375,
+              "f1": 0.8823529411764706
+            },
+            "present_boundary": {
+              "tp": 19,
+              "fp": 2,
+              "fn": 1,
+              "tn": 128,
+              "evaluated_labels": 150,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 20,
+              "predicted_positive": 21,
+              "precision": 0.9047619047619048,
+              "recall": 0.95,
+              "f1": 0.926829268292683
+            }
+          }
+        },
+        "THREAT": {
+          "evaluated_labels": 147,
+          "exact_state_accuracy": 0.8979591836734694,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 17,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 8,
+              "ABSENT": 112,
+              "BOUNDARY": 2,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 5,
+              "ABSENT": 0,
+              "BOUNDARY": 3,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 17,
+              "fp": 13,
+              "fn": 0,
+              "tn": 117,
+              "evaluated_labels": 147,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 17,
+              "predicted_positive": 30,
+              "precision": 0.5666666666666667,
+              "recall": 1.0,
+              "f1": 0.723404255319149
+            },
+            "present_boundary": {
+              "tp": 25,
+              "fp": 10,
+              "fn": 0,
+              "tn": 112,
+              "evaluated_labels": 147,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 25,
+              "predicted_positive": 35,
+              "precision": 0.7142857142857143,
+              "recall": 1.0,
+              "f1": 0.8333333333333334
+            }
+          }
+        },
+        "LEGAL": {
+          "evaluated_labels": 148,
+          "exact_state_accuracy": 0.9932432432432432,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 14,
+              "ABSENT": 1,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 0,
+              "ABSENT": 133,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 14,
+              "fp": 0,
+              "fn": 1,
+              "tn": 133,
+              "evaluated_labels": 148,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 15,
+              "predicted_positive": 14,
+              "precision": 1.0,
+              "recall": 0.9333333333333333,
+              "f1": 0.9655172413793104
+            },
+            "present_boundary": {
+              "tp": 14,
+              "fp": 0,
+              "fn": 1,
+              "tn": 133,
+              "evaluated_labels": 148,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 15,
+              "predicted_positive": 14,
+              "precision": 1.0,
+              "recall": 0.9333333333333333,
+              "f1": 0.9655172413793104
+            }
+          }
+        },
+        "EXPOSURE": {
+          "evaluated_labels": 150,
+          "exact_state_accuracy": 0.9866666666666667,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 9,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 0,
+              "ABSENT": 137,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 2,
+              "ABSENT": 0,
+              "BOUNDARY": 2,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 9,
+              "fp": 2,
+              "fn": 0,
+              "tn": 139,
+              "evaluated_labels": 150,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 9,
+              "predicted_positive": 11,
+              "precision": 0.8181818181818182,
+              "recall": 1.0,
+              "f1": 0.9
+            },
+            "present_boundary": {
+              "tp": 13,
+              "fp": 0,
+              "fn": 0,
+              "tn": 137,
+              "evaluated_labels": 150,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 13,
+              "predicted_positive": 13,
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            }
+          }
+        },
+        "UNFAIR_REQUEST": {
+          "evaluated_labels": 150,
+          "exact_state_accuracy": 0.96,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 11,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 0,
+              "ABSENT": 133,
+              "BOUNDARY": 1,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 1,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 2,
+              "ABSENT": 1,
+              "BOUNDARY": 1,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 11,
+              "fp": 1,
+              "fn": 0,
+              "tn": 134,
+              "evaluated_labels": 146,
+              "excluded_gold_unknown": 4,
+              "gold_positive": 11,
+              "predicted_positive": 12,
+              "precision": 0.9166666666666666,
+              "recall": 1.0,
+              "f1": 0.9565217391304348
+            },
+            "present_boundary": {
+              "tp": 12,
+              "fp": 1,
+              "fn": 0,
+              "tn": 133,
+              "evaluated_labels": 146,
+              "excluded_gold_unknown": 4,
+              "gold_positive": 12,
+              "predicted_positive": 13,
+              "precision": 0.9230769230769231,
+              "recall": 1.0,
+              "f1": 0.96
+            }
+          }
+        },
+        "PRIVACY": {
+          "evaluated_labels": 146,
+          "exact_state_accuracy": 0.8767123287671232,
+          "confusion_matrix": {
+            "PRESENT": {
+              "PRESENT": 9,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "ABSENT": {
+              "PRESENT": 16,
+              "ABSENT": 119,
+              "BOUNDARY": 1,
+              "UNKNOWN": 0
+            },
+            "BOUNDARY": {
+              "PRESENT": 0,
+              "ABSENT": 1,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            },
+            "UNKNOWN": {
+              "PRESENT": 0,
+              "ABSENT": 0,
+              "BOUNDARY": 0,
+              "UNKNOWN": 0
+            }
+          },
+          "binary": {
+            "present": {
+              "tp": 9,
+              "fp": 16,
+              "fn": 0,
+              "tn": 121,
+              "evaluated_labels": 146,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 9,
+              "predicted_positive": 25,
+              "precision": 0.36,
+              "recall": 1.0,
+              "f1": 0.5294117647058824
+            },
+            "present_boundary": {
+              "tp": 9,
+              "fp": 17,
+              "fn": 1,
+              "tn": 119,
+              "evaluated_labels": 146,
+              "excluded_gold_unknown": 0,
+              "gold_positive": 10,
+              "predicted_positive": 26,
+              "precision": 0.34615384615384615,
+              "recall": 0.9,
+              "f1": 0.5
+            }
+          }
+        }
+      },
+      "binary": {
+        "present": {
+          "micro": {
+            "tp": 87,
+            "fp": 39,
+            "fn": 5,
+            "tn": 906,
+            "evaluated_labels": 1037,
+            "excluded_gold_unknown": 4,
+            "gold_positive": 92,
+            "predicted_positive": 126,
+            "precision": 0.6904761904761905,
+            "recall": 0.9456521739130435,
+            "f1": 0.7981651376146789
+          },
+          "macro_precision": 0.7492640692640694,
+          "macro_recall": 0.9529761904761905,
+          "macro_f1": 0.8187716414426206,
+          "macro_tag_denominator": 7
+        },
+        "present_boundary": {
+          "micro": {
+            "tp": 108,
+            "fp": 36,
+            "fn": 3,
+            "tn": 890,
+            "evaluated_labels": 1037,
+            "excluded_gold_unknown": 4,
+            "gold_positive": 111,
+            "predicted_positive": 144,
+            "precision": 0.75,
+            "recall": 0.972972972972973,
+            "f1": 0.8470588235294118
+          },
+          "macro_precision": 0.8022215879358737,
+          "macro_recall": 0.9690476190476192,
+          "macro_f1": 0.8611121580233173,
+          "macro_tag_denominator": 7
+        }
+      },
+      "confusion_matrix": {
+        "PRESENT": {
+          "PRESENT": 87,
+          "ABSENT": 1,
+          "BOUNDARY": 4,
+          "UNKNOWN": 0
+        },
+        "ABSENT": {
+          "PRESENT": 29,
+          "ABSENT": 890,
+          "BOUNDARY": 7,
+          "UNKNOWN": 0
+        },
+        "BOUNDARY": {
+          "PRESENT": 10,
+          "ABSENT": 2,
+          "BOUNDARY": 7,
+          "UNKNOWN": 0
+        },
+        "UNKNOWN": {
+          "PRESENT": 2,
+          "ABSENT": 1,
+          "BOUNDARY": 1,
+          "UNKNOWN": 0
+        }
+      },
+      "tag_exact_match": {
+        "matched": 984,
+        "denominator": 1041,
+        "rate": 0.9452449567723343
+      },
+      "all_tags_exact_match": {
+        "matched_cases": 95,
+        "successful_complete_cases": 141,
+        "rate": 0.6737588652482269,
+        "requested_cases": 150,
+        "requested_case_rate": 0.6333333333333333
+      },
+      "denominators": {
+        "requested_cases": 150,
+        "successful_cases": 150,
+        "successful_labels": 1041,
+        "failed_labels": 0,
+        "out_of_scope_labels": 148
+      },
+      "evidence": {
+        "policy": "whitespace_substring_grounded_complaint_v1",
+        "matched_labels": 102,
+        "evaluable_labels": 106,
+        "match_rate": 0.9622641509433962,
+        "excluded_labels": 935,
+        "exclusion_reasons": {
+          "gold_state_not_present_or_boundary": 930,
+          "gold_evidence_missing": 4,
+          "gold_evidence_not_in_complaint": 1
+        },
+        "predicted_spans": 166,
+        "grounded_spans": 166,
+        "ungrounded_spans": 0,
+        "grounding_rate": 1.0
+      }
+    }
+  },
+  "coverage": {
+    "requested_cases": 200,
+    "processed_cases": 200,
+    "succeeded_cases": 200,
+    "failed_cases": 0,
+    "not_attempted_cases": 0,
+    "failure_codes": {}
+  }
+}

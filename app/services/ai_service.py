@@ -77,11 +77,19 @@ class AiService:
         try:
             value = client.generate(prompt)
         except Exception as exc:
-            # SDK exception messages/causes may contain API keys or request bodies.
-            if isinstance(exc, TimeoutError) or type(exc).__name__ in ("APITimeoutError", "ReadTimeout", "ConnectTimeout"):
+            # Match only allowlisted exception class names. Never serialize the
+            # exception or its cause: SDK errors may embed requests or API keys.
+            timeout_names = frozenset({
+                "TimeoutError", "TimeoutException", "APITimeoutError",
+                "ReadTimeout", "ConnectTimeout", "WriteTimeout", "PoolTimeout",
+                "ConnectTimeoutError", "ReadTimeoutError",
+            })
+            if isinstance(exc, TimeoutError) or any(
+                klass.__name__ in timeout_names for klass in type(exc).__mro__
+            ):
                 raise AiFailure(ErrorCode.LLM_TIMEOUT) from None
             raise AiFailure(ErrorCode.LLM_UNAVAILABLE) from None
-        if not isinstance(value, str):
+        if not isinstance(value, str) or not value.strip():
             raise AiFailure(ErrorCode.LLM_INVALID_SCHEMA)
         return value
 

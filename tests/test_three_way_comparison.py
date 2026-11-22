@@ -29,7 +29,8 @@ def fixture_run(tmp_path, name, *, gold="PRESENT", pred="PRESENT", failed=False)
         {"case_id": f"G{i:03}", "code": code, "gold_state": gold, "predicted_state": pred,
          "request_success": 0 if failed and i == 1 else 1,
          "evaluation_in_scope": 1, "state_match": int(gold == pred),
-         "evidence_evaluable": 0, "predicted_span_count": 0, "grounded_span_count": 0}
+         "evidence_evaluable": 0, "evidence_exclusion_reason": "fixture",
+         "predicted_span_count": 0, "grounded_span_count": 0}
         for i in range(1, 201) for code in EVALUATED_CODES
     ]
     _write_csv(directory / "cases.csv", cases)
@@ -85,9 +86,14 @@ def test_rejects_tampered_or_incompatible_sources(tmp_path):
     meta["dataset"]["sha256"] = "b"*64
     (path2 / "manifest.json").write_text(json.dumps(meta))
     rule = fixture_run(tmp_path, "rule")
+    new_llm = fixture_run(tmp_path, "llm-fresh")
+    new_manifest = json.loads((new_llm / "manifest.json").read_text())
+    new_manifest["mode"] = "llm"
+    new_manifest["rule"] = {"source": "empty_rule_results"}
+    (new_llm / "manifest.json").write_text(json.dumps(new_manifest))
     with pytest.raises(ValueError, match="same Golden Set"):
         compare({"rule": load_run(rule, name="rule"),
-                 "llm": load_run(fixture_run(tmp_path, "llm-replacement"), name="llm"),
+                 "llm": load_run(new_llm, name="llm"),
                  "service": load_run(path2, name="service")}, bootstrap_rounds=0)
 
 

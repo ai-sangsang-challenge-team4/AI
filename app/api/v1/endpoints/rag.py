@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from app.core.errors import AiFailure, ErrorCode
+from app.schemas.input_limits import SearchQueryText
 
 
 router = APIRouter(
@@ -11,7 +12,7 @@ router = APIRouter(
 
 
 class RagSearchRequest(BaseModel):
-    query: str
+    query: SearchQueryText
 
 
 class RagSearchResult(BaseModel):

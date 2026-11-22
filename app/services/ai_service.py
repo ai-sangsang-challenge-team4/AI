@@ -6,6 +6,7 @@ import os
 
 from app.core.errors import AiFailure, ErrorCode
 from app.core.operational_logging import record_model
+from app.services.risk_evidence import ground_evidence_spans
 
 from app.core.evaluation_metadata import evaluation_provenance
 
@@ -116,17 +117,9 @@ class AiService:
                 risk_data = self._normalize_risk_tag_response(risk_data)
                 self._validate_risk_tags(risk_data)
                 self._validate_risk_severity(risk_data)
-                # Fail closed. #28's PRESENT -> BOUNDARY repair needs owner agreement.
-                for tag in risk_data["tags"]:
-                    for span in tag["evidenceSpans"]:
-                        if span["text"] not in complaint:
-                            raise AiFailure(ErrorCode.LLM_INVALID_EVIDENCE)
-                        start, end = span.get("start"), span.get("end")
-                        if start is not None or end is not None:
-                            if (type(start) is not int or type(end) is not int
-                                    or not 0 <= start < end <= len(complaint)
-                                    or complaint[start:end] != span["text"]):
-                                raise AiFailure(ErrorCode.LLM_INVALID_EVIDENCE)
+                # Fail closed on fabricated evidence; safely repair only
+                # exact-text offset mistakes for either analysis mode.
+                ground_evidence_spans(complaint, risk_data["tags"])
                 return LlmRiskAnalysisResult.model_validate({
                     "tags": risk_data["tags"],
                     "metadata": {

@@ -19,10 +19,10 @@ class ResponseDraftRequest(BaseModel):
 class RagReference(BaseModel):
     source: str
     page: int | None = None
-    content: ComplaintText
+    content: str
 
 
 class ResponseDraftResult(BaseModel):
-    content: ComplaintText
+    content: str
     modelName: str
     references: list[RagReference] = Field(default_factory=list)

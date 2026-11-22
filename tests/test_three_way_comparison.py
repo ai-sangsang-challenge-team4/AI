@@ -1,0 +1,165 @@
+"""Offline contracts for three-way Golden Set comparisons."""
+from __future__ import annotations
+
+import csv
+import hashlib
+import json
+
+import pytest
+
+from scripts.compare_goldenset_three_way import (
+    _mcnemar_exact, build_disagreement_rows, build_tag_metric_rows,
+    compare, export_tables, load_run,
+)
+from scripts.evaluation.data import EVALUATED_CODES
+
+
+def _write_csv(path, rows):
+    with path.open("w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def fixture_run(tmp_path, name, *, gold="PRESENT", pred="PRESENT", failed=False):
+    directory = tmp_path / name
+    directory.mkdir()
+    cases = [{"case_id": f"G{i:03}", "request_success": "0" if failed and i == 1 else "1",
+              "latency_ms": "3.0"} for i in range(1, 201)]
+    rows = [
+        {"case_id": f"G{i:03}", "code": code, "gold_state": gold, "predicted_state": pred,
+         "request_success": 0 if failed and i == 1 else 1,
+         "evaluation_in_scope": 1, "state_match": int(gold == pred),
+         "evidence_evaluable": 0, "evidence_exclusion_reason": "fixture",
+         "predicted_span_count": 0, "grounded_span_count": 0}
+        for i in range(1, 201) for code in EVALUATED_CODES
+    ]
+    _write_csv(directory / "cases.csv", cases)
+    _write_csv(directory / "results.csv", rows)
+    meta = {"schema_version": 1, "dataset_schema": "goldenset", "requested_cases": 200,
+            "dataset": {"sha256": "a"*64},
+            "mode": "llm" if name == "llm" else "rule_llm",
+            "rule": {"source": "empty_rule_results"} if name == "llm" else {"sha256": "b"*64},
+            "backend_capture": {"prediction_view": "rule"} if name == "rule" else None,
+            "rule_result_source": "captured",
+            "artifacts": {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+                          for p in directory.iterdir()}}
+    (directory / "manifest.json").write_text(json.dumps(meta), encoding="utf-8")
+    return directory
+
+
+def test_three_way_comparison_preserves_paired_case_denominators(tmp_path):
+    paths = {name: fixture_run(tmp_path, name, pred="ABSENT" if name == "rule" else "PRESENT",
+                               failed=name == "rule_llm")
+             for name in ("rule", "llm", "rule_llm")}
+    runs = {name: load_run(path, name=name) for name, path in paths.items()}
+    summary = compare(runs, bootstrap_rounds=0)
+    assert summary["common_paired_cases"] == 199
+    assert not summary["complete_200_case_comparison"]
+    assert summary["runs"]["rule"]["macro"]["present"]["macro_f1"] == 0
+    assert summary["runs"]["llm"]["macro"]["present"]["macro_f1"] == 1
+    assert summary["comparisons"]["rule_vs_llm"]["mcnemar_case_exact"]["right_only_correct"] == 199
+    assert "final_risk" not in summary["runs"]["rule_llm"]
+    assert summary["runs"]["rule_llm"]["per_tag"]["present"]["THREAT"]["f1"] == 1
+    assert summary["excluded"] == ["REPEAT"]
+
+
+def test_case_level_mcnemar_uses_case_not_label_count():
+    cases = {"one", "two"}
+    def make(value):
+        return {"rows": [
+            {"case_id": case, "code": code, "gold_state": "PRESENT",
+             "predicted_state": "PRESENT" if value[case] else "ABSENT",
+             "evaluation_in_scope": 1, "request_success": 1}
+            for case in cases for code in EVALUATED_CODES]}
+    summary = _mcnemar_exact(make({"one": True, "two": False}),
+                             make({"one": False, "two": True}), cases)
+    assert summary["left_only_correct"] == 1
+    assert summary["right_only_correct"] == 1
+    assert summary["exact_two_sided_p"] == 1
+
+
+def test_rejects_tampered_or_incompatible_sources(tmp_path):
+    path = fixture_run(tmp_path, "llm")
+    (path / "results.csv").write_text("changed", encoding="utf-8")
+    with pytest.raises(ValueError, match="hash mismatch"):
+        load_run(path, name="llm")
+    path2 = fixture_run(tmp_path, "rule_llm")
+    meta = json.loads((path2 / "manifest.json").read_text())
+    meta["dataset"]["sha256"] = "b"*64
+    (path2 / "manifest.json").write_text(json.dumps(meta))
+    rule = fixture_run(tmp_path, "rule")
+    new_llm = fixture_run(tmp_path, "llm-fresh")
+    new_manifest = json.loads((new_llm / "manifest.json").read_text())
+    new_manifest["mode"] = "llm"
+    new_manifest["rule"] = {"source": "empty_rule_results"}
+    (new_llm / "manifest.json").write_text(json.dumps(new_manifest))
+    with pytest.raises(ValueError, match="same Golden Set"):
+        compare({"rule": load_run(rule, name="rule"),
+                 "llm": load_run(new_llm, name="llm"),
+                 "rule_llm": load_run(path2, name="rule_llm")}, bootstrap_rounds=0)
+
+
+
+def test_llm_only_must_not_be_rule_conditioned(tmp_path):
+    path = fixture_run(tmp_path, "llm")
+    manifest_path = path / "manifest.json"
+    meta = json.loads(manifest_path.read_text())
+    meta["rule"]["source"] = "provided_rule_results"
+    manifest_path.write_text(json.dumps(meta))
+    with pytest.raises(ValueError, match="LLM Only"):
+        load_run(path, name="llm")
+
+
+def test_rule_llm_cannot_be_misidentified_llm_only(tmp_path):
+    path = fixture_run(tmp_path, "rule_llm")
+    manifest_path = path / "manifest.json"
+    meta = json.loads(manifest_path.read_text())
+    meta["mode"] = "llm"
+    manifest_path.write_text(json.dumps(meta))
+    with pytest.raises(ValueError, match="Rule\\+LLM"):
+        load_run(path, name="rule_llm")
+
+
+def test_exports_tabular_tag_metrics_and_disagreements_without_private_text(tmp_path):
+    paths = {
+        name: fixture_run(tmp_path, name, pred="ABSENT" if name == "rule" else "PRESENT")
+        for name in ("rule", "llm", "rule_llm")
+    }
+    runs = {name: load_run(path, name=name) for name, path in paths.items()}
+    summary = compare(runs, bootstrap_rounds=0)
+
+    rows = build_tag_metric_rows(summary)
+    assert len(rows) == 3 * 2 * len(EVALUATED_CODES)
+    assert {row["mode"] for row in rows} == {"rule", "llm", "rule_llm"}
+    assert all(row["paired_cases"] == 200 for row in rows)
+
+    disagreements = build_disagreement_rows(runs)
+    assert len(disagreements) == 200 * len(EVALUATED_CODES)
+    assert disagreements[0]["rule_correct"] == 0
+    assert disagreements[0]["llm_correct"] == 1
+    assert disagreements[0]["rule_llm_correct"] == 1
+
+    output = tmp_path / "comparison.json"
+    exported = export_tables(summary, runs, output)
+    metrics_file = tmp_path / "comparison_tag_metrics.csv"
+    differences_file = tmp_path / "comparison_disagreements.csv"
+    assert metrics_file.is_file()
+    assert differences_file.is_file()
+    assert exported["disagreement_labels"] == 200 * len(EVALUATED_CODES)
+    assert len(list(csv.DictReader(metrics_file.open(encoding="utf-8-sig")))) == len(rows)
+    assert len(list(csv.DictReader(differences_file.open(encoding="utf-8-sig")))) == len(disagreements)
+    assert "message_text" not in differences_file.read_text(encoding="utf-8-sig")
+    with pytest.raises(ValueError, match="already exist"):
+        export_tables(summary, runs, output)
+
+
+def test_no_disagreements_when_three_models_predict_same_tag_states(tmp_path):
+    paths = {
+        name: fixture_run(tmp_path, name)
+        for name in ("rule", "llm", "rule_llm")
+    }
+    runs = {name: load_run(path, name=name) for name, path in paths.items()}
+    assert build_disagreement_rows(runs) == []
+    report = compare(runs, bootstrap_rounds=0)
+    assert report["comparisons"]["llm_vs_rule_llm"]["present"]["macro_f1_difference"] == 0

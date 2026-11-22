@@ -76,8 +76,14 @@ def load_run(path, *, name):
         scoped = {r["code"] for r in rows if r["case_id"] == case_id and r["evaluation_in_scope"]}
         if scoped != set(EVALUATED_CODES):
             raise ValueError(f"{name}: incomplete evaluated tags")
+    risk = []
+    if (path / "risk_results.csv").is_file():
+        expected = manifest["artifacts"].get("risk_results.csv")
+        if expected != _hash(path / "risk_results.csv"):
+            raise ValueError(f"{name}: risk_results.csv hash mismatch")
+        risk = _read_csv(path / "risk_results.csv")
     return {"name": name, "path": str(path), "manifest": manifest, "rows": rows,
-            "cases": cases, "digest": digest,
+            "cases": cases, "risk": risk, "digest": digest,
             "successful": {c["case_id"] for c in cases if c["request_success"] == "1"}}
 
 
@@ -114,6 +120,56 @@ def _bootstrap_difference(left, right, paired, policy, rounds=1000, seed=2026):
         return None
     return [deltas[int(0.025 * (len(deltas) - 1))],
             deltas[int(0.975 * (len(deltas) - 1))]]
+
+
+def _risk_summary(run, paired):
+    """Only score actual case-level gold/predicted risk outputs."""
+    levels = ("LOW", "MEDIUM", "HIGH", "EMERGENCY")
+    if not run["risk"]:
+        return {"status": "not_evaluated_missing_case_level_risk_results"}
+    rows = [r for r in run["risk"] if r.get("case_id") in paired and
+            r.get("success") in ("1", "True", "true") and
+            r.get("gold_risk_level") in levels and r.get("predicted_risk_level") in levels]
+    if len(rows) != len(paired) or len({r["case_id"] for r in rows}) != len(paired):
+        return {"status": "not_evaluated_incomplete_confirmed_risk_outputs",
+                "confirmed_paired_rows": len(rows)}
+    matrix = {g: {p: 0 for p in levels} for g in levels}
+    for r in rows:
+        matrix[r["gold_risk_level"]][r["predicted_risk_level"]] += 1
+    count = len(rows)
+    correct = sum(matrix[x][x] for x in levels)
+    gold_counts = [sum(matrix[g].values()) for g in levels]
+    pred_counts = [sum(matrix[g][p] for g in levels) for p in levels]
+    observed = sum(((i-j)/3)**2 * matrix[g][p] for i,g in enumerate(levels)
+                   for j,p in enumerate(levels)) / count
+    expected = sum(((i-j)/3)**2 * gold_counts[i] * pred_counts[j] for i in range(4)
+                   for j in range(4)) / (count*count)
+    emergency_total = gold_counts[3]
+    urgent_total = gold_counts[2] + gold_counts[3]
+    urgent_detected = sum(matrix[g][p] for g in levels[2:] for p in levels[2:])
+    return {"status": "evaluated", "cases": count, "accuracy": correct/count,
+            "quadratic_weighted_kappa": (1-observed/expected if expected else None),
+            "emergency_recall": matrix["EMERGENCY"]["EMERGENCY"]/emergency_total if emergency_total else None,
+            "high_emergency_recall": urgent_detected/urgent_total if urgent_total else None,
+            "confusion_matrix": matrix}
+
+
+def _mcnemar_exact(left, right, paired):
+    """Paired exact-case 7-tag correctness; case (not tag) is the unit."""
+    def outcomes(run):
+        by_id = {}
+        for row in run["rows"]:
+            if row["case_id"] in paired and row["evaluation_in_scope"] and row["request_success"]:
+                by_id.setdefault(row["case_id"], []).append(row["gold_state"] == row["predicted_state"])
+        return {case_id: len(values) == len(EVALUATED_CODES) and all(values)
+                for case_id, values in by_id.items()}
+    a, b = outcomes(left), outcomes(right)
+    left_only = sum(a[i] and not b[i] for i in paired)
+    right_only = sum(b[i] and not a[i] for i in paired)
+    n = left_only + right_only
+    p = min(1.0, 2*sum(math.comb(n, k) for k in range(min(left_only,right_only)+1))/2**n) if n else 1.0
+    return {"unit": "case_all_7_tags_exact", "left_only_correct": left_only,
+            "right_only_correct": right_only, "exact_two_sided_p": p}
 
 
 def compare(runs, *, bootstrap_rounds=1000):
@@ -157,17 +213,19 @@ def compare(runs, *, bootstrap_rounds=1000):
                            "mean": statistics.mean(latencies) if latencies else None,
                            "median": statistics.median(latencies) if latencies else None},
             "manifest_mode": run["manifest"]["mode"],
+            "final_risk": _risk_summary(run, paired),
         }
     comparisons = {}
     for left, right in (("rule", "llm"), ("llm", "service"), ("rule", "service")):
         comparisons[f"{left}_vs_{right}"] = {
-            p: {
+            "mcnemar_case_exact": _mcnemar_exact(runs[left], runs[right], paired),
+            **{p: {
                 "macro_f1_difference": by_run[right]["macro"][p]["macro_f1"] -
                                        by_run[left]["macro"][p]["macro_f1"],
                 "paired_case_bootstrap_95pct_ci": (
                     _bootstrap_difference(runs[left], runs[right], paired, p, bootstrap_rounds)
                     if bootstrap_rounds else None),
-            } for p in POLICIES
+            } for p in POLICIES}
         }
     return {
         "status": "descriptive_not_controlled_ab",

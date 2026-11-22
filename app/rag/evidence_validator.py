@@ -92,6 +92,12 @@ def _domain_mismatch(query: str, content: str) -> bool:
 
 
 def _relevant(query: str, content: str) -> bool:
+    # A student-conflict query and a student-conflict evidence passage can be
+    # semantically aligned even when inflections prevent literal token overlap.
+    # Keep this positive signal narrow and apply domain mismatch first.
+    if (_STUDENT_CONFLICT_QUERY.search(unicodedata.normalize("NFC", query))
+            and _STUDENT_CONFLICT_EVIDENCE.search(unicodedata.normalize("NFC", content))):
+        return True
     query_terms = _tokens(query)
     if not query_terms:
         # Short/generic questions should not trigger arbitrary evidence deletion.

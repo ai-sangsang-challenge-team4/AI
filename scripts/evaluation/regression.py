@@ -58,3 +58,45 @@ def assert_conditions(case_spec, response):
             failures.append(f"{condition['code']} expected={'|'.join(allowed)} actual={actual}")
     if failures:
         raise AssertionError(f"{case_id}: " + "; ".join(failures))
+
+
+def assess_records(suite, records):
+    """Check saved inference against partial dev invariants, never synthetic gold."""
+    failures, passed = [], []
+    conditions_checked = 0
+    for spec in suite["cases"]:
+        case_id = spec["case_id"]
+        record = records.get(case_id)
+        error = ""
+        if record is None:
+            error = "missing_prediction"
+        elif record.get("request_success") != 1:
+            error = "request_failed"
+        elif record.get("source_provenance_verified") is not True:
+            error = "input_provenance_unverified"
+        if not error:
+            try:
+                tags = prediction_tags(record.get("response"))
+            except ValueError:
+                error = "prediction_contract_failed"
+        if error:
+            failures.append({"case_id": case_id, "code": "", "expected": "", "actual": "", "error_code": error})
+            continue
+        wrong = []
+        for condition in spec["conditions"]:
+            conditions_checked += 1
+            code = condition["code"]
+            state = tags[code]["state"]
+            if state not in condition["allowed_states"]:
+                wrong.append({"case_id": case_id, "code": code,
+                              "expected": "|".join(condition["allowed_states"]), "actual": state,
+                              "error_code": "condition_mismatch"})
+        failures.extend(wrong)
+        if not wrong:
+            passed.append(case_id)
+    failed_ids = sorted({row["case_id"] for row in failures})
+    return {"status": "passed" if not failures else "failed", "requested_cases": len(suite["cases"]),
+            "passed_cases": len(passed), "failed_cases": len(failed_ids), "failed_case_ids": failed_ids,
+            "conditions_checked": conditions_checked, "failures": failures,
+            "expectations": "AI_PROPOSED_partial_conditions_pending_human_review",
+            "provenance_check": "recorded_input_hashes_match; not_authentication_of_model_execution"}

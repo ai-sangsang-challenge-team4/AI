@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Compare three completed Golden Set evaluation runs without calling models.
+"""Compare Rule Only, LLM Only, and Rule+LLM tagging on the same Golden Set.
 
-Only immutable evaluator output directories are accepted. Never compute a score
-for an absent run or treat Backend's rule-conditioned LLM as LLM-only.
+Only immutable evaluation output directories are accepted. No risk-level scoring,
+model inference, or use of Rule-conditioned LLM as an LLM-only baseline.
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from scripts.evaluation.data import EVALUATED_CODES
 from scripts.evaluation.metrics import compute_metrics
 from scripts.evaluation.reporting import read_result_rows
 
-RUN_NAMES = ("rule", "llm", "service")
+RUN_NAMES = ("rule", "llm", "rule_llm")
 POLICIES = ("present", "present_boundary")
 
 
@@ -56,8 +56,10 @@ def load_run(path, *, name):
     mode = manifest.get("mode")
     if name == "llm" and (mode != "llm" or manifest.get("rule", {}).get("source") != "empty_rule_results"):
         raise ValueError("LLM Only must be a true empty-rule-results llm run")
-    if name == "service" and mode != "rule_llm" and not manifest.get("backend_capture"):
-        raise ValueError("service must be rule_llm or actual Backend capture")
+    if name == "rule_llm":
+        capture = manifest.get("backend_capture") or {}
+        if not (mode == "rule_llm" and manifest.get("rule", {}).get("sha256")) and capture.get("prediction_view") != "final":
+            raise ValueError("Rule+LLM must be rule_llm with captured rules or a Backend final tagging capture")
     if name == "rule" and (not manifest.get("backend_capture") or
                            manifest["backend_capture"].get("prediction_view") != "rule"):
         raise ValueError("Rule Only must come from actual Backend rule capture")
@@ -76,24 +78,13 @@ def load_run(path, *, name):
         scoped = {r["code"] for r in rows if r["case_id"] == case_id and r["evaluation_in_scope"]}
         if scoped != set(EVALUATED_CODES):
             raise ValueError(f"{name}: incomplete evaluated tags")
-    risk = []
-    if (path / "risk_results.csv").is_file():
-        expected = manifest["artifacts"].get("risk_results.csv")
-        if expected != _hash(path / "risk_results.csv"):
-            raise ValueError(f"{name}: risk_results.csv hash mismatch")
-        risk = _read_csv(path / "risk_results.csv")
     return {"name": name, "path": str(path), "manifest": manifest, "rows": rows,
-            "cases": cases, "risk": risk, "digest": digest,
+            "cases": cases, "digest": digest,
             "successful": {c["case_id"] for c in cases if c["request_success"] == "1"}}
-
 
 def _paired_metrics(run, paired):
     rows = [r for r in run["rows"] if r["case_id"] in paired and r["request_success"]]
     return compute_metrics(rows, len(paired), POLICIES)
-
-
-def _f1(run, paired, policy):
-    return _paired_metrics(run, paired)["binary"][policy]["macro_f1"]
 
 
 def _bootstrap_difference(left, right, paired, policy, rounds=1000, seed=2026):
@@ -120,38 +111,6 @@ def _bootstrap_difference(left, right, paired, policy, rounds=1000, seed=2026):
         return None
     return [deltas[int(0.025 * (len(deltas) - 1))],
             deltas[int(0.975 * (len(deltas) - 1))]]
-
-
-def _risk_summary(run, paired):
-    """Only score actual case-level gold/predicted risk outputs."""
-    levels = ("LOW", "MEDIUM", "HIGH", "EMERGENCY")
-    if not run["risk"]:
-        return {"status": "not_evaluated_missing_case_level_risk_results"}
-    rows = [r for r in run["risk"] if r.get("case_id") in paired and
-            r.get("success") in ("1", "True", "true") and
-            r.get("gold_risk_level") in levels and r.get("predicted_risk_level") in levels]
-    if len(rows) != len(paired) or len({r["case_id"] for r in rows}) != len(paired):
-        return {"status": "not_evaluated_incomplete_confirmed_risk_outputs",
-                "confirmed_paired_rows": len(rows)}
-    matrix = {g: {p: 0 for p in levels} for g in levels}
-    for r in rows:
-        matrix[r["gold_risk_level"]][r["predicted_risk_level"]] += 1
-    count = len(rows)
-    correct = sum(matrix[x][x] for x in levels)
-    gold_counts = [sum(matrix[g].values()) for g in levels]
-    pred_counts = [sum(matrix[g][p] for g in levels) for p in levels]
-    observed = sum(((i-j)/3)**2 * matrix[g][p] for i,g in enumerate(levels)
-                   for j,p in enumerate(levels)) / count
-    expected = sum(((i-j)/3)**2 * gold_counts[i] * pred_counts[j] for i in range(4)
-                   for j in range(4)) / (count*count)
-    emergency_total = gold_counts[3]
-    urgent_total = gold_counts[2] + gold_counts[3]
-    urgent_detected = sum(matrix[g][p] for g in levels[2:] for p in levels[2:])
-    return {"status": "evaluated", "cases": count, "accuracy": correct/count,
-            "quadratic_weighted_kappa": (1-observed/expected if expected else None),
-            "emergency_recall": matrix["EMERGENCY"]["EMERGENCY"]/emergency_total if emergency_total else None,
-            "high_emergency_recall": urgent_detected/urgent_total if urgent_total else None,
-            "confusion_matrix": matrix}
 
 
 def _mcnemar_exact(left, right, paired):
@@ -207,16 +166,17 @@ def compare(runs, *, bootstrap_rounds=1000):
                           ("macro_precision", "macro_recall", "macro_f1")} for p in POLICIES},
             "micro": {p: {k: m["binary"][p]["micro"][k] for k in
                           ("precision", "recall", "f1")} for p in POLICIES},
-            "per_tag_f1": {p: {code: m["per_tag"][code]["binary"][p]["f1"]
-                              for code in EVALUATED_CODES} for p in POLICIES},
+            "per_tag": {p: {code: {
+                key: m["per_tag"][code]["binary"][p][key]
+                for key in ("precision", "recall", "f1", "tp", "fp", "fn", "tn")
+            } for code in EVALUATED_CODES} for p in POLICIES},
             "latency_ms": {"count": len(latencies),
                            "mean": statistics.mean(latencies) if latencies else None,
                            "median": statistics.median(latencies) if latencies else None},
             "manifest_mode": run["manifest"]["mode"],
-            "final_risk": _risk_summary(run, paired),
         }
     comparisons = {}
-    for left, right in (("rule", "llm"), ("llm", "service"), ("rule", "service")):
+    for left, right in (("rule", "llm"), ("llm", "rule_llm"), ("rule", "rule_llm")):
         comparisons[f"{left}_vs_{right}"] = {
             "mcnemar_case_exact": _mcnemar_exact(runs[left], runs[right], paired),
             **{p: {
@@ -237,20 +197,20 @@ def compare(runs, *, bootstrap_rounds=1000):
         "runs": by_run,
         "comparisons": comparisons,
         "limitations": [
-            "Model, prompt, RAG, masking, SDK and scoring-engine settings must be checked independently before causal claims.",
+            "Model, prompt, RAG, masking, and SDK settings must be checked independently before causal claims.",
             "Rule-only/Backend final captures can use different input preprocessing than direct AI calls.",
             "Latency may include different processing stages; do not label it an apples-to-apples speed comparison.",
-            "Risk-level comparison requires independently captured Backend Risk Engine output and confirmed risk targets.",
+            "Risk Engine scores and final LOW/MEDIUM/HIGH/EMERGENCY risk levels are outside this tagging experiment.",
             "No LLM API calls are performed by this script.",
         ],
     }
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Offline Rule/LLM/Service Golden Set comparison")
+    parser = argparse.ArgumentParser(description="Offline Rule Only/LLM Only/Rule+LLM tagging comparison")
     parser.add_argument("--rule-run", required=True)
     parser.add_argument("--llm-run", required=True)
-    parser.add_argument("--service-run", required=True)
+    parser.add_argument("--rule-llm-run", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--bootstrap-rounds", type=int, default=1000)
     args = parser.parse_args(argv)

@@ -73,6 +73,9 @@ python scripts/compare_goldenset_three_way.py \
 - 세 실행에서 **모두 성공한 동일 사례**로 다시 산출한 7태그 Macro/Micro P·R·F1 및 태그별 F1
 - 사례 단위 paired bootstrap으로 Macro F1 차이의 95% 구간
 - 7태그 전체 정답 사례 비율에 대한 *사례 단위* exact McNemar 검정
+- `comparison_tag_metrics.csv`: 방식×양성 판정 기준×태그별 P/R/F1 및 TP/FP/FN/TN, 비교 사례 수
+- `comparison_disagreements.csv`: 같은 사례·태그에서 세 방식의 판정이 달랐던 항목만 저장 (case_id, 태그, 정답·예측 상태, 방식별 정오 판정)
+- 민원 원문과 LLM 응답 본문은 새 CSV에 포함하지 않으며, 기존 결과 파일은 덮어쓰지 않습니다.
 - 실행별 성공 수·공통 평가 수·지연시간(측정 경계가 다를 수 있음)
 
 전체 200건이 모두 성공하지 않으면 `complete_200_case_comparison=false`로 표시하며, **누락 결과를 정답이나 정상 예측으로 간주하지 않습니다.**

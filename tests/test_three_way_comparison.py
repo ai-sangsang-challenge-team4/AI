@@ -8,7 +8,8 @@ import json
 import pytest
 
 from scripts.compare_goldenset_three_way import (
-    _mcnemar_exact, compare, load_run,
+    _mcnemar_exact, build_disagreement_rows, build_tag_metric_rows,
+    compare, export_tables, load_run,
 )
 from scripts.evaluation.data import EVALUATED_CODES
 
@@ -118,3 +119,47 @@ def test_rule_llm_cannot_be_misidentified_llm_only(tmp_path):
     manifest_path.write_text(json.dumps(meta))
     with pytest.raises(ValueError, match="Rule\\+LLM"):
         load_run(path, name="rule_llm")
+
+
+def test_exports_tabular_tag_metrics_and_disagreements_without_private_text(tmp_path):
+    paths = {
+        name: fixture_run(tmp_path, name, pred="ABSENT" if name == "rule" else "PRESENT")
+        for name in ("rule", "llm", "rule_llm")
+    }
+    runs = {name: load_run(path, name=name) for name, path in paths.items()}
+    summary = compare(runs, bootstrap_rounds=0)
+
+    rows = build_tag_metric_rows(summary)
+    assert len(rows) == 3 * 2 * len(EVALUATED_CODES)
+    assert {row["mode"] for row in rows} == {"rule", "llm", "rule_llm"}
+    assert all(row["paired_cases"] == 200 for row in rows)
+
+    disagreements = build_disagreement_rows(runs)
+    assert len(disagreements) == 200 * len(EVALUATED_CODES)
+    assert disagreements[0]["rule_correct"] == 0
+    assert disagreements[0]["llm_correct"] == 1
+    assert disagreements[0]["rule_llm_correct"] == 1
+
+    output = tmp_path / "comparison.json"
+    exported = export_tables(summary, runs, output)
+    metrics_file = tmp_path / "comparison_tag_metrics.csv"
+    differences_file = tmp_path / "comparison_disagreements.csv"
+    assert metrics_file.is_file()
+    assert differences_file.is_file()
+    assert exported["disagreement_labels"] == 200 * len(EVALUATED_CODES)
+    assert len(list(csv.DictReader(metrics_file.open(encoding="utf-8-sig")))) == len(rows)
+    assert len(list(csv.DictReader(differences_file.open(encoding="utf-8-sig")))) == len(disagreements)
+    assert "message_text" not in differences_file.read_text(encoding="utf-8-sig")
+    with pytest.raises(ValueError, match="already exist"):
+        export_tables(summary, runs, output)
+
+
+def test_no_disagreements_when_three_models_predict_same_tag_states(tmp_path):
+    paths = {
+        name: fixture_run(tmp_path, name)
+        for name in ("rule", "llm", "rule_llm")
+    }
+    runs = {name: load_run(path, name=name) for name, path in paths.items()}
+    assert build_disagreement_rows(runs) == []
+    report = compare(runs, bootstrap_rounds=0)
+    assert report["comparisons"]["llm_vs_rule_llm"]["present"]["macro_f1_difference"] == 0

@@ -105,7 +105,7 @@ def test_evidence_text_and_offsets_remain_consistent(offsets):
     assert " abc "[actual["start"]:actual["end"]] == actual["text"]
 
 
-@pytest.mark.parametrize("start,end", [(0, 3), (-1, 4), (1, 99), (1, None), (None, 4), (True, 4), ("1", 4)])
+@pytest.mark.parametrize("start,end", [(1, None), (None, 4), (True, 4), ("1", 4)])
 def test_invalid_evidence_offsets_use_output_retry(start, end):
     value = risk_output({"THREAT": "PRESENT"})
     next(tag for tag in value["tags"] if tag["code"] == "THREAT")["evidenceSpans"] = [
@@ -113,6 +113,50 @@ def test_invalid_evidence_offsets_use_output_retry(start, end):
     client = FakeLlm(json.dumps(value), json.dumps(risk_output()))
     result = call_analyze(client, complaint=" abc ")
     assert result.status_code == 200
+    assert len(client.prompts) == 2
+
+
+@pytest.mark.parametrize("offsets", [(0, 3), (-1, 4), (1, 99)])
+def test_wrong_numeric_evidence_offsets_are_repaired_without_retry(offsets):
+    value = risk_output({"THREAT": "PRESENT"})
+    next(tag for tag in value["tags"] if tag["code"] == "THREAT")["evidenceSpans"] = [
+        {"text": "abc", "start": offsets[0], "end": offsets[1]}]
+    client = FakeLlm(json.dumps(value))
+    result = call_analyze(client, complaint=" abc ")
+    assert result.status_code == 200
+    assert len(client.prompts) == 1
+    tag = next(tag for tag in result.json()["tags"] if tag["code"] == "THREAT")
+    assert tag["evidenceSpans"] == [{"text": "abc", "start": 1, "end": 4}]
+
+
+def test_ambiguous_duplicate_evidence_is_unlocated_not_arbitrarily_repaired():
+    value = risk_output({"THREAT": "PRESENT"})
+    next(tag for tag in value["tags"] if tag["code"] == "THREAT")["evidenceSpans"] = [
+        {"text": "abc", "start": 99, "end": 102}]
+    result = call_analyze(FakeLlm(json.dumps(value)), complaint="abc xxx abc")
+    assert result.status_code == 200
+    tag = next(tag for tag in result.json()["tags"] if tag["code"] == "THREAT")
+    assert tag["evidenceSpans"] == [{"text": "abc", "start": None, "end": None}]
+
+
+def test_duplicate_evidence_with_correct_offsets_is_preserved():
+    value = risk_output({"THREAT": "PRESENT"})
+    next(tag for tag in value["tags"] if tag["code"] == "THREAT")["evidenceSpans"] = [
+        {"text": "abc", "start": 8, "end": 11}]
+    result = call_analyze(FakeLlm(json.dumps(value)), complaint="abc xxx abc")
+    assert result.status_code == 200
+    tag = next(tag for tag in result.json()["tags"] if tag["code"] == "THREAT")
+    assert tag["evidenceSpans"] == [{"text": "abc", "start": 8, "end": 11}]
+
+
+def test_reworded_or_fabricated_evidence_still_fails_closed():
+    value = risk_output({"THREAT": "PRESENT"})
+    next(tag for tag in value["tags"] if tag["code"] == "THREAT")["evidenceSpans"] = [
+        {"text": "각오", "start": 10, "end": 12}]
+    client = FakeLlm(json.dumps(value))
+    result = call_analyze(client, complaint="저는 각 오하고 있습니다")
+    assert result.status_code == 502
+    assert result.json()["error"]["code"] == "LLM_INVALID_EVIDENCE"
     assert len(client.prompts) == 2
 
 

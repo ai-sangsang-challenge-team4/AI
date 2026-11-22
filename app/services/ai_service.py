@@ -259,12 +259,18 @@ class AiService:
         # 2. 관련 근거 자료 검색
         # ----------------------------------------------------
 
-        documents = self._search(self.retriever, content, k=3)
+        # Wider candidate pool only for the opt-in validator, so rejected
+        # evidence can be replaced with better candidates before returning top 3.
+        validate_enabled = os.getenv(
+            "RAG_EVIDENCE_VALIDATION_ENABLED", "false"
+        ).lower() in ("1", "true", "yes")
+        candidate_k = 10 if validate_enabled else 3
+        documents = self._search(self.retriever, content, k=candidate_k)
 
-        # Opt-in only: keep risk analysis and default response-draft behaviour
-        # unchanged until curated evaluation and deployment tests are complete.
+        # Risk analysis, public retrieval endpoint and default response-draft
+        # behaviour are unchanged while validation is disabled.
         evidence_note = ""
-        if os.getenv("RAG_EVIDENCE_VALIDATION_ENABLED", "false").lower() in ("1", "true", "yes"):
+        if validate_enabled:
             from app.rag.evidence_validator import validate_evidence
             reviewed = validate_evidence(content, documents, limit=3)
             documents = reviewed.documents

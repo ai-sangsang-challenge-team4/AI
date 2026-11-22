@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.input_limits import ComplaintText
+
 
 # ============================================================
 # Backend RiskTagCode와 동일한 코드
@@ -91,7 +93,7 @@ class RiskTagResult(BaseModel):
 # ============================================================
 
 class AiAnalyzeRequest(BaseModel):
-    complaint: str
+    complaint: ComplaintText
     ruleResults: list[RiskTagResult] = Field(
         default_factory=list
     )
@@ -136,7 +138,7 @@ class LlmRiskAnalysisResult(BaseModel):
 # ============================================================
 
 class ContextAnalysisRequest(BaseModel):
-    content: str = Field(min_length=1)
+    content: ComplaintText
 
 
 class ContextAnalysisResult(BaseModel):

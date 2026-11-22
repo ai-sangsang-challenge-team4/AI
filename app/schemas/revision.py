@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from app.schemas.input_limits import ComplaintText
+
 
 class RevisionTagInput(BaseModel):
     code: str
@@ -10,7 +12,7 @@ class RevisionTagInput(BaseModel):
 
 
 class RevisionRequest(BaseModel):
-    complaint: str
+    complaint: ComplaintText
     tags: list[RevisionTagInput] = Field(
         default_factory=list
     )

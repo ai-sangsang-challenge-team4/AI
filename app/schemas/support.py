@@ -1,8 +1,10 @@
 from pydantic import BaseModel, Field
 
+from app.schemas.input_limits import ComplaintText
+
 
 class SummaryRequest(BaseModel):
-    content: str
+    content: ComplaintText
 
 
 class SummaryResult(BaseModel):
@@ -11,7 +13,7 @@ class SummaryResult(BaseModel):
 
 
 class ResponseDraftRequest(BaseModel):
-    content: str
+    content: ComplaintText
 
 
 class RagReference(BaseModel):

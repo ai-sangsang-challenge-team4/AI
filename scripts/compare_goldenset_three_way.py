@@ -206,6 +206,95 @@ def compare(runs, *, bootstrap_rounds=1000):
     }
 
 
+def build_tag_metric_rows(report):
+    """Flat table for plots and the team's performance report."""
+    result = []
+    for mode in RUN_NAMES:
+        run = report["runs"][mode]
+        for policy in POLICIES:
+            for code in EVALUATED_CODES:
+                metric = run["per_tag"][policy][code]
+                result.append({
+                    "mode": mode,
+                    "positive_policy": policy,
+                    "code": code,
+                    "precision": metric["precision"],
+                    "recall": metric["recall"],
+                    "f1": metric["f1"],
+                    "tp": metric["tp"],
+                    "fp": metric["fp"],
+                    "fn": metric["fn"],
+                    "tn": metric["tn"],
+                    "paired_cases": report["common_paired_cases"],
+                })
+    return result
+
+
+def build_disagreement_rows(runs):
+    """One record per case/tag with differing predictions; never expose complaint text."""
+    paired = set.intersection(*(run["successful"] for run in runs.values()))
+    by_run = {}
+    for name in RUN_NAMES:
+        by_run[name] = {
+            (row["case_id"], row["code"]): row
+            for row in runs[name]["rows"]
+            if row["case_id"] in paired and row["evaluation_in_scope"]
+        }
+
+    records = []
+    for case_id in sorted(paired):
+        for code in EVALUATED_CODES:
+            key = (case_id, code)
+            states = {name: by_run[name][key]["predicted_state"] for name in RUN_NAMES}
+            if len(set(states.values())) == 1:
+                continue
+            gold = by_run["rule"][key]["gold_state"]
+            records.append({
+                "case_id": case_id,
+                "code": code,
+                "gold_state": gold,
+                "rule_state": states["rule"],
+                "llm_state": states["llm"],
+                "rule_llm_state": states["rule_llm"],
+                "rule_correct": int(states["rule"] == gold),
+                "llm_correct": int(states["llm"] == gold),
+                "rule_llm_correct": int(states["rule_llm"] == gold),
+            })
+    return records
+
+
+def _write_csv(path, rows, fields):
+    """Write only derived labels and metrics, not complaints or model responses."""
+    with path.open("x", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def export_tables(report, runs, output):
+    """Write two sibling CSVs; refuse to overwrite any existing evaluation file."""
+    output = Path(output)
+    tags_path = output.with_name(output.stem + "_tag_metrics.csv")
+    disagreements_path = output.with_name(output.stem + "_disagreements.csv")
+    if any(path.exists() for path in (output, tags_path, disagreements_path)):
+        raise ValueError("one or more comparison output files already exist")
+    tag_rows = build_tag_metric_rows(report)
+    disagreement_rows = build_disagreement_rows(runs)
+    _write_csv(tags_path, tag_rows, (
+        "mode", "positive_policy", "code", "precision", "recall", "f1",
+        "tp", "fp", "fn", "tn", "paired_cases",
+    ))
+    _write_csv(disagreements_path, disagreement_rows, (
+        "case_id", "code", "gold_state", "rule_state", "llm_state",
+        "rule_llm_state", "rule_correct", "llm_correct", "rule_llm_correct",
+    ))
+    return {
+        "tag_metrics_csv": str(tags_path),
+        "disagreements_csv": str(disagreements_path),
+        "disagreement_labels": len(disagreement_rows),
+    }
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Offline Rule Only/LLM Only/Rule+LLM tagging comparison")
     parser.add_argument("--rule-run", required=True)

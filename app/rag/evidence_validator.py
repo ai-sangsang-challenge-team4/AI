@@ -62,6 +62,35 @@ def _bigrams(text: str) -> set[str]:
     return {token[i:i + 2] for token in tokens for i in range(len(token) - 1)}
 
 
+_STUDENT_CONFLICT_QUERY = re.compile(
+    r"학생\\s*간\\s*갈등|친구(?:와|랑|와의|와서|끼리)?\\s*(?:다[퉜투]|싸[웠우]|갈등)|교우관계|학급\\s*내\\s*갈등"
+)
+_STUDENT_CONFLICT_EVIDENCE = re.compile(
+    r"학생\\s*간\\s*(?:갈등|분쟁|다툼)|학생(?:들)?\\s*(?:사이|간)의?\\s*(?:갈등|다툼)|"
+    r"교우관계|친구(?:와|와의|끼리|\\s*관계)|학교폭력|피해학생|가해학생|"
+    r"관계회복\\s*(?:프로그램|숙려제도)|학생\\s*간\\s*관계\\s*개선"
+)
+_TEACHER_DISPUTE = re.compile(
+    r"교육활동\\s*침해|교권(?:보호)?위원회|교원\\s*(?:과|및|와)\\s*학부모|"
+    r"피해교원|분쟁\\s*조정|분쟁조정|교원A|학부모B"
+)
+
+
+def _domain_mismatch(query: str, content: str) -> bool:
+    """Reject obvious teacher-parent disputes for explicit student-conflict queries.
+
+    Do not apply this rule to generic questions, school violence reports or
+    teacher-dispute questions. It is a narrow safety guard, not a topic classifier.
+    """
+    q = unicodedata.normalize("NFC", query)
+    d = unicodedata.normalize("NFC", content)
+    return bool(
+        _STUDENT_CONFLICT_QUERY.search(q)
+        and _TEACHER_DISPUTE.search(d)
+        and not _STUDENT_CONFLICT_EVIDENCE.search(d)
+    )
+
+
 def _relevant(query: str, content: str) -> bool:
     query_terms = _tokens(query)
     if not query_terms:
@@ -103,7 +132,7 @@ def validate_evidence(query: str, documents: list[dict], *, limit: int = 3) -> E
             rejected += 1
             continue
         seen.add(identity)
-        if not _relevant(query, content):
+        if _domain_mismatch(query, content) or not _relevant(query, content):
             rejected += 1
             continue
         kept.append(dict(row))

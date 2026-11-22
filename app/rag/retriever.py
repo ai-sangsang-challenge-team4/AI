@@ -1,5 +1,6 @@
 
 from pathlib import Path
+import os
 
 from langchain_chroma import Chroma
 from app.rag.cloudflare_embeddings import CloudflareBgeM3Embeddings
@@ -40,6 +41,8 @@ class RagRetriever:
         max_per_source: int = DEFAULT_MAX_PER_SOURCE,
         score_threshold: float = DEFAULT_SCORE_THRESHOLD,
         search_k: int = DEFAULT_SEARCH_K,
+        mode: str | None = None,
+        reranker_model: str | None = None,
     ):
         # Cloudflare Workers AI의 BGE-M3 임베딩 API 사용
         # EC2에서 임베딩 모델을 직접 로딩하지 않음
@@ -55,6 +58,22 @@ class RagRetriever:
         self.max_per_source = max_per_source
         self.score_threshold = score_threshold
         self.search_k = search_k
+        self.mode = mode or os.getenv("RAG_RETRIEVAL_MODE", "vector")
+        if self.mode not in ("vector", "hybrid", "hybrid_rerank"):
+            raise ValueError("RAG_RETRIEVAL_MODE must be vector, hybrid, or hybrid_rerank")
+        self.hybrid = None
+        if self.mode != "vector":
+            from app.rag.hybrid_retriever import HybridRetriever
+            reranker = None
+            if self.mode == "hybrid_rerank":
+                from app.rag.reranker import CrossEncoderReranker
+                model_name = reranker_model or os.getenv("RAG_RERANKER_MODEL", "")
+                reranker = CrossEncoderReranker(model_name)
+            self.hybrid = HybridRetriever(
+                self.vectorstore, max_per_source=max_per_source,
+                score_threshold=score_threshold, search_k=search_k,
+                reranker=reranker,
+            )
 
     def search(
         self,
@@ -63,6 +82,8 @@ class RagRetriever:
     ) -> list[dict]:
 
         limit = k or self.max_results
+        if self.hybrid is not None:
+            return self.hybrid.search(query, k=limit)
 
         search_k = max(
             self.search_k,

@@ -314,7 +314,7 @@ def main(argv=None):
     exports = export_tables(report, runs, path)
     with path.open("x", encoding="utf-8") as stream:
         json.dump(report, stream, ensure_ascii=False, indent=2, allow_nan=False)
-        stream.write("\\n")
+        stream.write("\n")
     print(json.dumps({"comparison_status": report["status"],
                       "common_paired_cases": report["common_paired_cases"],
                       "output": str(path), **exports}, ensure_ascii=False))

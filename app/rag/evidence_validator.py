@@ -10,7 +10,15 @@ from pathlib import PurePath
 import re
 import unicodedata
 
-from app.rag.retriever import is_low_quality_chunk
+# Keep this module importable in the offline test suite without LangChain/Chroma.
+def _low_quality_chunk(content: str) -> bool:
+    text = " ".join(content.split())
+    return not text or text.isdecimal() or text in {
+        "학교민원 처리 매뉴얼",
+        "학교민원 처리 매뉴얼 학교민원 처리 매뉴얼",
+        "학교민원 처리 기본 원칙 및 절차",
+    }
+
 
 _TOKEN = re.compile(r"[가-힣a-zA-Z0-9]{2,}")
 _STOPWORDS = frozenset({
@@ -82,7 +90,7 @@ def validate_evidence(query: str, documents: list[dict], *, limit: int = 3) -> E
         content = str(row.get("content") or "").strip()
         source = str(row.get("source") or "").strip()
         page = row.get("page")
-        if not content or is_low_quality_chunk(content) or not source or source == "알 수 없음":
+        if not content or _low_quality_chunk(content) or not source or source == "알 수 없음":
             rejected += 1
             continue
         if isinstance(page, bool) or (page is not None and (not isinstance(page, int) or page < 0)):

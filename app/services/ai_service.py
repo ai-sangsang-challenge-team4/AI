@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 
 from app.core.errors import AiFailure, ErrorCode
 from app.core.operational_logging import record_model
@@ -258,7 +259,29 @@ class AiService:
         # 2. 관련 근거 자료 검색
         # ----------------------------------------------------
 
-        documents = self._search(self.retriever, content, k=3)
+        # Wider candidate pool only for the opt-in validator, so rejected
+        # evidence can be replaced with better candidates before returning top 3.
+        validate_enabled = os.getenv(
+            "RAG_EVIDENCE_VALIDATION_ENABLED", "false"
+        ).lower() in ("1", "true", "yes")
+        candidate_k = 10 if validate_enabled else 3
+        documents = self._search(self.retriever, content, k=candidate_k)
+
+        # Risk analysis, public retrieval endpoint and default response-draft
+        # behaviour are unchanged while validation is disabled.
+        evidence_note = ""
+        if validate_enabled:
+            from app.rag.evidence_validator import validate_evidence
+            reviewed = validate_evidence(content, documents, limit=3)
+            documents = reviewed.documents
+            evidence_note = (
+                "검색 근거가 부족합니다. 구체적인 법적 요건·기한·처분을 "
+                "추측하지 말고 확인이 필요하다고 안내하세요."
+                if reviewed.insufficient else
+                "참고자료는 관련성 예비 검사를 거쳤을 뿐입니다. "
+                "근거에 없는 법적 요건·기한·조치를 만들어내지 마세요. "
+                "학교별 규정을 일반적인 법령처럼 단정하지 마세요."
+            )
 
         # ----------------------------------------------------
         # 3. 답변 초안 프롬프트 생성
@@ -268,6 +291,7 @@ class AiService:
             content=content,
             context=context,
             documents=documents,
+            evidence_note=evidence_note,
         )
 
         # ----------------------------------------------------
@@ -484,6 +508,7 @@ JSON 앞뒤에 설명을 붙이지 마십시오.
         content: str,
         context: ContextAnalysisResult,
         documents: list[dict],
+        evidence_note: str = "",
     ) -> str:
 
         context_json = json.dumps(
@@ -542,7 +567,9 @@ JSON 앞뒤에 설명을 붙이지 마십시오.
 [관련 참고자료]
 ==================================================
 
-{documents_text}
+{documents_text or "관련 참고자료 없음"}
+
+{evidence_note}
 
 ==================================================
 [작성 원칙]

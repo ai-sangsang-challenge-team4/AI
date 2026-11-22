@@ -1,5 +1,8 @@
 """Offline resilience tests: no provider calls, API keys, or exception data in responses."""
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
+import importlib.util
+from pathlib import Path
+import sys
 
 import pytest
 
@@ -62,10 +65,16 @@ def test_success_preserves_model_output():
 
 
 def test_gemini_timeout_and_retry_are_explicit(monkeypatch):
-    """Inspect SDK initialization without opening network connections."""
-    from app.llm import gemini_client
-
+    """Inspect config with a fake SDK; CI intentionally omits google-genai."""
     created = []
+
+    class HttpOptions:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
+    class HttpRetryOptions:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
 
     def fake_client(**kwargs):
         created.append(kwargs)
@@ -73,9 +82,27 @@ def test_gemini_timeout_and_retry_are_explicit(monkeypatch):
             generate_content=lambda **_: SimpleNamespace(text="정상 답변")
         ))
 
+    fake_google = ModuleType("google")
+    fake_genai = ModuleType("google.genai")
+    fake_types = ModuleType("google.genai.types")
+    fake_genai.Client = fake_client
+    fake_types.HttpOptions = HttpOptions
+    fake_types.HttpRetryOptions = HttpRetryOptions
+    fake_genai.types = fake_types
+    fake_google.genai = fake_genai
+    monkeypatch.setitem(sys.modules, "google", fake_google)
+    monkeypatch.setitem(sys.modules, "google.genai", fake_genai)
+    monkeypatch.setitem(sys.modules, "google.genai.types", fake_types)
+
+    # Load under an isolated test name so the fake SDK is not cached in the
+    # regular app.llm.gemini_client module across other tests.
+    module_path = Path(__file__).resolve().parents[1] / "app/llm/gemini_client.py"
+    spec = importlib.util.spec_from_file_location("_offline_gemini_client", module_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
     monkeypatch.setenv("GEMINI_API_KEY", "test-only-placeholder")
-    monkeypatch.setattr(gemini_client.genai, "Client", fake_client)
-    client = gemini_client.GeminiLlmClient(model="gemini-3.5-flash-lite")
+    client = module.GeminiLlmClient(model="gemini-3.5-flash-lite")
     assert created[0]["http_options"].timeout == 30000
     assert created[0]["http_options"].retry_options.attempts == 1
     assert client.generate("테스트") == "정상 답변"

@@ -311,10 +311,13 @@ def main(argv=None):
     report = compare(runs, bootstrap_rounds=args.bootstrap_rounds)
     path = Path(args.output)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+    exports = export_tables(report, runs, path)
+    with path.open("x", encoding="utf-8") as stream:
+        json.dump(report, stream, ensure_ascii=False, indent=2, allow_nan=False)
+        stream.write("\\n")
     print(json.dumps({"comparison_status": report["status"],
                       "common_paired_cases": report["common_paired_cases"],
-                      "output": str(path)}, ensure_ascii=False))
+                      "output": str(path), **exports}, ensure_ascii=False))
     return 0
 
 

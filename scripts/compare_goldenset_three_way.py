@@ -13,8 +13,11 @@ import json
 import math
 import random
 import statistics
-from collections import Counter
+import sys
 from pathlib import Path
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.evaluation.data import EVALUATED_CODES
 from scripts.evaluation.metrics import compute_metrics

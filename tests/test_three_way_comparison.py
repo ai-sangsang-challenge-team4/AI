@@ -8,7 +8,7 @@ import json
 import pytest
 
 from scripts.compare_goldenset_three_way import (
-    _mcnemar_exact, _risk_summary, compare, load_run,
+    _mcnemar_exact, compare, load_run,
 )
 from scripts.evaluation.data import EVALUATED_CODES
 
@@ -38,8 +38,9 @@ def fixture_run(tmp_path, name, *, gold="PRESENT", pred="PRESENT", failed=False)
     meta = {"schema_version": 1, "dataset_schema": "goldenset", "requested_cases": 200,
             "dataset": {"sha256": "a"*64},
             "mode": "llm" if name == "llm" else "rule_llm",
-            "rule": {"source": "empty_rule_results"} if name == "llm" else {},
+            "rule": {"source": "empty_rule_results"} if name == "llm" else {"sha256": "b"*64},
             "backend_capture": {"prediction_view": "rule"} if name == "rule" else None,
+            "rule_result_source": "captured",
             "artifacts": {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
                           for p in directory.iterdir()}}
     (directory / "manifest.json").write_text(json.dumps(meta), encoding="utf-8")
@@ -48,8 +49,8 @@ def fixture_run(tmp_path, name, *, gold="PRESENT", pred="PRESENT", failed=False)
 
 def test_three_way_comparison_preserves_paired_case_denominators(tmp_path):
     paths = {name: fixture_run(tmp_path, name, pred="ABSENT" if name == "rule" else "PRESENT",
-                               failed=name == "service")
-             for name in ("rule", "llm", "service")}
+                               failed=name == "rule_llm")
+             for name in ("rule", "llm", "rule_llm")}
     runs = {name: load_run(path, name=name) for name, path in paths.items()}
     summary = compare(runs, bootstrap_rounds=0)
     assert summary["common_paired_cases"] == 199
@@ -57,7 +58,8 @@ def test_three_way_comparison_preserves_paired_case_denominators(tmp_path):
     assert summary["runs"]["rule"]["macro"]["present"]["macro_f1"] == 0
     assert summary["runs"]["llm"]["macro"]["present"]["macro_f1"] == 1
     assert summary["comparisons"]["rule_vs_llm"]["mcnemar_case_exact"]["right_only_correct"] == 199
-    assert summary["runs"]["service"]["final_risk"]["status"].startswith("not_evaluated")
+    assert "final_risk" not in summary["runs"]["rule_llm"]
+    assert summary["runs"]["rule_llm"]["per_tag"]["present"]["THREAT"]["f1"] == 1
     assert summary["excluded"] == ["REPEAT"]
 
 
@@ -81,7 +83,7 @@ def test_rejects_tampered_or_incompatible_sources(tmp_path):
     (path / "results.csv").write_text("changed", encoding="utf-8")
     with pytest.raises(ValueError, match="hash mismatch"):
         load_run(path, name="llm")
-    path2 = fixture_run(tmp_path, "service")
+    path2 = fixture_run(tmp_path, "rule_llm")
     meta = json.loads((path2 / "manifest.json").read_text())
     meta["dataset"]["sha256"] = "b"*64
     (path2 / "manifest.json").write_text(json.dumps(meta))
@@ -94,9 +96,25 @@ def test_rejects_tampered_or_incompatible_sources(tmp_path):
     with pytest.raises(ValueError, match="same Golden Set"):
         compare({"rule": load_run(rule, name="rule"),
                  "llm": load_run(new_llm, name="llm"),
-                 "service": load_run(path2, name="service")}, bootstrap_rounds=0)
+                 "rule_llm": load_run(path2, name="rule_llm")}, bootstrap_rounds=0)
 
 
-def test_risk_requires_complete_confirmed_case_predictions():
-    summary = _risk_summary({"risk": []}, {"G001"})
-    assert summary["status"] == "not_evaluated_missing_case_level_risk_results"
+
+def test_llm_only_must_not_be_rule_conditioned(tmp_path):
+    path = fixture_run(tmp_path, "llm")
+    manifest_path = path / "manifest.json"
+    meta = json.loads(manifest_path.read_text())
+    meta["rule"]["source"] = "provided_rule_results"
+    manifest_path.write_text(json.dumps(meta))
+    with pytest.raises(ValueError, match="LLM Only"):
+        load_run(path, name="llm")
+
+
+def test_rule_llm_cannot_be_misidentified_llm_only(tmp_path):
+    path = fixture_run(tmp_path, "rule_llm")
+    manifest_path = path / "manifest.json"
+    meta = json.loads(manifest_path.read_text())
+    meta["mode"] = "llm"
+    manifest_path.write_text(json.dumps(meta))
+    with pytest.raises(ValueError, match="Rule\\+LLM"):
+        load_run(path, name="rule_llm")
